@@ -1171,17 +1171,20 @@ function nextStage(){ paused=false; stage++; if(stage>7){ state='ending'; stopBG
 function safeLoseLife(){ if(!player || player.inv > 0 || clearTimer > 0 || state!=='play') return; lives--; shake = 0; sfx.hit(); addBurst(player.x+12, player.y+9, '#ff6262', 28, 6, 28, 3.4); enemyBullets = []; lasers = []; bombFlash = 0; if(lives < 0){ stopBGM(); hiScore=Math.max(hiScore,score); paused=false; state='title'; message='GAME OVER'; return; } resetPlayer(); }
 function createBoss(){
  const table=[null,
-  {w:150,h:120,hp:1600,name:'PHOTON CORE', color:'#ffb347'},
-  {w:170,h:132,hp:2400,name:'RAZOR SERAPH', color:'#ff5db1'},
-  {w:190,h:146,hp:3400,name:'OBSIDIAN REX', color:'#72f7ff'},
-  {w:210,h:158,hp:4700,name:'NEON JUDGMENT', color:'#89ff9b'},
-  {w:225,h:168,hp:6200,name:'AURORA TYRANT', color:'#ffd86b'},
-  {w:235,h:176,hp:8200,name:'COSMIC PARALLAX', color:'#9f8cff'},
-  {w:240,h:182,hp:9800,name:'PRISM OVERDRIVE', color:'#7cf8ff'}
+ {hp:1600,name:'PHOTON CORE', color:'#ffb347'},
+ {hp:2400,name:'RAZOR SERAPH', color:'#ff5db1'},
+ {hp:3400,name:'OBSIDIAN REX', color:'#72f7ff'},
+ {hp:4700,name:'NEON JUDGMENT', color:'#89ff9b'},
+ {hp:6200,name:'AURORA TYRANT', color:'#ffd86b'},
+ {hp:8200,name:'COSMIC PARALLAX', color:'#9f8cff'},
+ {hp:9800,name:'PRISM OVERDRIVE', color:'#7cf8ff'}
  ];
  const t=table[stage] || table[7];
- // Keep boss visually impactful but avoid late-stage screen oppression (cap size progression).
- return {x:W+t.w+20,y:H/2-t.h/2,w:t.w,h:t.h,hp:t.hp,maxHP:t.hp,name:t.name,color:t.color,entering:true,t:0,shot:22,phase:1,stage:stage};
+ // ★ FIX: boss size no longer grows with stage. Keep roughly Stage 1 size.
+ const BASE_W = 150;
+ const BASE_H = 120;
+ // Spawn from off-screen to the right, same as before.
+ return {x:W+BASE_W+20,y:H/2-BASE_H/2,w:BASE_W,h:BASE_H,hp:t.hp,maxHP:t.hp,name:t.name,color:t.color,entering:true,t:0,shot:22,phase:1,stage:stage};
  }
 function handleBossDefeat(){ if(clearTimer>0) return;
  const bx = boss ? (boss.x + boss.w/2) : (W*.66);
