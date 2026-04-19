@@ -119,11 +119,35 @@ body{touch-action:none; overscroll-behavior:none;}
 /* Keep legacy mobileUI hidden (avoid JS null refs in older wiring) */
 #mobileUI{display:none !important;}
 
+
+
+/* === FINAL FORCE LAYOUT (wins over any earlier rules) === */
+/* Right-top: BOMB */
+#bombBtn{position:fixed !important; right:calc(0px + env(safe-area-inset-right)) !important; top:calc(0px + env(safe-area-inset-top)) !important; z-index:999 !important;}
+/* Right-middle: FIRE */
+#fireBtn{position:fixed !important; right:calc(0px + env(safe-area-inset-right)) !important; top:50% !important; transform:translateY(-50%) !important; z-index:999 !important;}
+/* Right-bottom: FOCUS (+FIRE) */
+#focusBtn{position:fixed !important; left:auto !important; top:auto !important;
+  right:calc(0px + env(safe-area-inset-right)) !important;
+  bottom:calc(0px + env(safe-area-inset-bottom)) !important;
+  z-index:999 !important;}
+
+/* Optional sizing (SE2 default / Pro Max larger) */
+@media (max-width:429px){
+  #focusBtn{width:132px !important; height:72px !important; border-radius:22px !important; font-size:14px !important;}
+  #bombBtn{width:168px !important; height:72px !important; border-radius:24px !important; font-size:14px !important;}
+}
+@media (min-width:430px){
+  #focusBtn{width:168px !important; height:88px !important; border-radius:26px !important; font-size:15px !important;}
+  #bombBtn{width:200px !important; height:92px !important; border-radius:26px !important; font-size:16px !important;}
+  #fireBtn{width:92px !important; height:92px !important; border-radius:26px !important; font-size:14px !important;}
+}
+
 </style>
 </head>
 <body>
 <div class="frame">
- <div class="hint-touch">TOUCH: 左下=レバー移動 / 左上=FOCUS / 右上=BOMB / 右下=FIRE(ショット+レーザー)</div>
+ <div class="hint-touch">TOUCH: 左下=レバー移動 / 右上=BOMB / 右中=FIRE / 右下=FOCUS+FIRE</div>
  <div class="diag" id="diag"></div>
  <div class="rotate-hint" id="rotateHint" aria-live="polite">
   <div class="card">
@@ -142,10 +166,10 @@ body{touch-action:none; overscroll-behavior:none;}
 </div>
 <div class="actions" aria-hidden="true">
   <div class="row">
-    <div class="tbtn wide gold" data-tap="bomb">BOMB</div>
+    <div class="tbtn wide gold" data-tap="bomb" id="bombBtn">BOMB</div>
   </div>
   <div class="row">
-    <div class="tbtn big" data-hold="fire">FIRE</div>
+    <div class="tbtn big" data-hold="fire" id="fireBtn">FIRE</div>
   </div>
 </div>
 <div class="caption">
@@ -892,7 +916,7 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
   const joy = document.getElementById('joystick');
   const stick = document.getElementById('stick');
   let active = false, pid = null, cx=0, cy=0;
-  const R = 54; // +50% radius (was 36) // smaller radius -> easier thumb reach
+  const R = 36; // smaller radius -> easier thumb reach
   const dead = 0.12;
   const setStick = (dx,dy)=>{ if(!stick) return; stick.style.transform = `translate(${dx - 24}px, ${dy - 24}px)`; };
   const reset = ()=>{ input.ax = 0; input.ay = 0; active=false; pid=null; setStick(0,0); };
@@ -934,6 +958,22 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
   focusTop.addEventListener('pointercancel', u);
  }
 
+
+// Standalone FOCUS button (bottom-right) = FOCUS + FIRE
+ const focusBtn = document.getElementById('focusBtn');
+ const fireBtn = document.getElementById('fireBtn');
+ if(focusBtn){
+   const setA = (el,on)=> el && el.classList.toggle('active', !!on);
+   const down = (e)=>{ e.preventDefault(); resumeAudio(); input.focus=1; input.shot=1; input.alt=1; setA(focusBtn,true); };
+   const up = (e)=>{ e.preventDefault(); input.focus=0; setA(focusBtn,false);
+     const fireHeld = fireBtn && fireBtn.classList.contains('active');
+     if(!fireHeld){ input.shot=0; input.alt=0; }
+   };
+   focusBtn.addEventListener('pointerdown', down);
+   focusBtn.addEventListener('pointerup', up);
+   focusBtn.addEventListener('pointercancel', up);
+ }
+
 // Action buttons
   const setActive = (el,on)=> el && el.classList.toggle('active', !!on);
   const actions = document.querySelector('.actions');
@@ -941,7 +981,7 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
     actions.querySelectorAll('[data-hold]').forEach(btn=>{
       const k = btn.getAttribute('data-hold');
       const onDown = (e)=>{ e.preventDefault(); resumeAudio(); if(k==='shot') input.shot=1; if(k==='laser') input.alt=1; if(k==='fire'){ input.shot=1; input.alt=1; } if(k==='focus') input.focus=1; setActive(btn,true); };
-      const onUp   = (e)=>{ e.preventDefault(); if(k==='shot') input.shot=0; if(k==='laser') input.alt=0; if(k==='fire'){ input.shot=0; input.alt=0; } if(k==='focus') input.focus=0; setActive(btn,false); };
+      const onUp   = (e)=>{ e.preventDefault(); if(k==='shot') input.shot=0; if(k==='laser') input.alt=0; if(k==='fire'){ const fb=document.getElementById('focusBtn'); const focusHeld = fb && fb.classList.contains('active'); if(!focusHeld){ input.shot=0; input.alt=0; } } if(k==='focus') input.focus=0; setActive(btn,false); };
       btn.addEventListener('pointerdown', onDown);
       btn.addEventListener('pointerup', onUp);
       btn.addEventListener('pointercancel', onUp);
