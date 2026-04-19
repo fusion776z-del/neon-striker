@@ -83,6 +83,22 @@ body{touch-action:none; overscroll-behavior:none;}
 
 @media (pointer:fine){#joystick,.actions{display:none;}}
 
+
+
+/* === Mobile Control UI (Tuned) === */
+#mobileUI{
+  position:fixed; right:12px; bottom:calc(14px + env(safe-area-inset-bottom));
+  display:flex; flex-direction:column; gap:10px; z-index:80;
+}
+.btn{
+  width:76px; height:64px; border-radius:18px; display:grid; place-items:center;
+  background:rgba(10,19,40,.55); border:1px solid rgba(114,247,255,.25);
+  backdrop-filter:blur(6px); box-shadow:0 10px 28px rgba(0,0,0,.45);
+  color:#fff; font-weight:800; letter-spacing:.08em; touch-action:none; user-select:none;
+}
+.btn.small{width:58px; height:52px; font-size:12px;}
+.btn:active,.btn.active{background:rgba(114,247,255,.22); transform:scale(0.96);}
+@media(pointer:fine){#mobileUI{display:none;}}
 </style>
 </head>
 <body>
@@ -769,6 +785,36 @@ function buildStage7Schedule(){ const q=[]; const push=(at,cfg)=>q.push({at,cfg}
 const BOSS_BULLET_PALETTE = ['#b56bff', '#ff4fd8', '#ff5a7a', '#ffd84d', '#ff8af2'];
 const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0};
 
+// === Mobile Button Wiring ===
+(function(){
+  const fire = document.getElementById('btnFire');
+  const focus = document.getElementById('btnFocus');
+  const bomb = document.getElementById('btnBomb');
+  const on = (el)=>el&&el.classList.add('active');
+  const off = (el)=>el&&el.classList.remove('active');
+
+  if(fire){
+    const down = e=>{ e.preventDefault(); resumeAudio(); input.shot=1; input.alt=1; on(fire); };
+    const up   = e=>{ e.preventDefault(); input.shot=0; input.alt=0; off(fire); };
+    fire.addEventListener('pointerdown', down, {passive:false});
+    fire.addEventListener('pointerup', up, {passive:false});
+    fire.addEventListener('pointercancel', up, {passive:false});
+  }
+  if(focus){
+    const down = e=>{ e.preventDefault(); input.focus=1; on(focus); };
+    const up   = e=>{ e.preventDefault(); input.focus=0; off(focus); };
+    focus.addEventListener('pointerdown', down, {passive:false});
+    focus.addEventListener('pointerup', up, {passive:false});
+    focus.addEventListener('pointercancel', up, {passive:false});
+  }
+  if(bomb){
+    bomb.addEventListener('pointerdown', e=>{ e.preventDefault(); resumeAudio(); on(bomb); }, {passive:false});
+    bomb.addEventListener('pointerup', e=>{ e.preventDefault(); input.bomb=1; off(bomb); }, {passive:false});
+    bomb.addEventListener('pointercancel', e=>{ e.preventDefault(); off(bomb); }, {passive:false});
+  }
+})();
+
+
 // === iPhone UX helpers v2 (compact joystick/buttons) ===
 (function(){
   const diag = document.getElementById('diag');
@@ -918,7 +964,7 @@ function updatePlay(){
   scrollStars(starsFar); scrollStars(starsMid); scrollStars(starsNear); updateParticles(); updateExplosions(); updateTerrains(); if(shake>0) shake=0; if(player.inv > 0) player.inv--; if(lifeUpTimer > 0) lifeUpTimer--; power = calcPower(); const focusRate=input.focus ? .52 : 1;
   const spd=input.focus ? 3.2 * FOCUS_MOVE_SCALE : 5.6;
   const ax = clamp((input.right-input.left) + (input.ax||0), -1, 1); const ay = clamp((input.down-input.up) + (input.ay||0), -1, 1); player.tx += ax*spd; player.ty += ay*spd; player.tx=clamp(player.tx,30,W*.52); player.ty=clamp(player.ty,30,H-30);
-  const moveRate=input.focus ? .22 : .28; const nextX=lerp(player.x,player.tx,moveRate); if(!hitTerrainRect(nextX,player.y,player.w,player.h)){ player.x=nextX; } else { player.tx=player.x; } const nextY=lerp(player.y,player.ty,moveRate); if(!hitTerrainRect(player.x,nextY,player.w,player.h)){ player.y=nextY; } else { player.ty=player.y; }
+  const moveRate=input.focus ? 0.55 : 0.70; const nextX=lerp(player.x,player.tx,moveRate); if(!hitTerrainRect(nextX,player.y,player.w,player.h)){ player.x=nextX; } else { player.tx=player.x; } const nextY=lerp(player.y,player.ty,moveRate); if(!hitTerrainRect(player.x,nextY,player.w,player.h)){ player.y=nextY; } else { player.ty=player.y; }
   trail.push({x:player.x,y:player.y}); if(trail.length>140) trail.shift();
   const needed=getOptionCount(); while(options.length<needed){ const i=options.length; const off=getOptionOffset(i); options.push({x:player.x+off.x, y:player.y+off.y, phase:i, offX:off.x, offY:off.y, trailDelay: 8 + i * 10}); } while(options.length>needed) options.pop(); for(let i=0;i<options.length;i++){ const o=options[i]; if(o.offX == null || o.offY == null){ const off=getOptionOffset(i); o.offX = off.x; o.offY = off.y; } if(o.trailDelay == null) o.trailDelay = 8 + i * 10; const idx = Math.max(0, trail.length - 1 - o.trailDelay); const ref = trail[idx] || {x: player.x, y: player.y}; o.x = ref.x + o.offX; o.y = ref.y + o.offY; }
   spawnTimer++; if(stage>=6 && !boss && !bossReady){ while(stageWaveCursor < stageWaveQueue.length && stageWaveQueue[stageWaveCursor].at <= spawnTimer){ spawnEnemy(stageWaveQueue[stageWaveCursor].cfg); stageWaveCursor++; } } else if(!boss && !bossReady && enemiesRemaining > 0 && spawnTimer > Math.max(6, Math.floor((24-stage*2)/getStageDensity()))){ spawnEnemy(); enemiesRemaining--; spawnTimer=0; }
@@ -1021,5 +1067,12 @@ addEventListener('keydown', e=>{ if(e.key==='ArrowUp') input.up=1; if(e.key==='A
 addEventListener('keyup', e=>{ if(e.key==='ArrowUp') input.up=0; if(e.key==='ArrowDown') input.down=0; if(e.key==='ArrowLeft') input.left=0; if(e.key==='ArrowRight') input.right=0; if(e.key==='Shift') input.focus=0; if(e.key==='z' || e.key==='Z') input.shot=0; if(e.key==='x' || e.key==='X') input.alt=0; if(e.key==='c' || e.key==='C') input.bomb=0; });
 loop();
 </script>
+
+<!-- Mobile Buttons: SHOT+LASER / FOCUS / BOMB -->
+<div id="mobileUI" aria-hidden="true">
+  <div id="btnFire" class="btn">FIRE</div>
+  <div id="btnFocus" class="btn small">FOCUS</div>
+  <div id="btnBomb" class="btn small">BOMB</div>
+</div>
 </body>
 </html>
