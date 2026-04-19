@@ -190,6 +190,33 @@ body{touch-action:none; overscroll-behavior:none;}
 .tbtn:active, .tbtn.active{ background: rgba(114,247,255,.14) !important; }
 
 .hint-touch{ background: rgba(0,0,0,.18) !important; border-color: rgba(255,255,255,.08) !important; }
+
+
+/* === Joystick: push further outside bottom-left + transparent while touching === */
+:root{
+  --joyIdleOpacity: .32;   /* 触っていない時 */
+  --joyTouchOpacity: .08; /* 触っている間（透明化） */
+  --joyFade: 120ms;
+}
+
+/* 画面外寄りに（数値を大きくするとさらに外へ） */
+#joystick{
+  left: calc(-14px + env(safe-area-inset-left)) !important;
+  bottom: calc(-14px + env(safe-area-inset-bottom)) !important;
+  opacity: var(--joyIdleOpacity);
+  transition: opacity var(--joyFade) ease;
+}
+
+/* 触っている間はさらに透明 */
+#joystick.ui-touch{
+  opacity: var(--joyTouchOpacity) !important;
+}
+
+/* つまみとベースも控えめに */
+#joystick .base{ opacity: .55; }
+#joystick .stick{ opacity: .55; }
+#joystick .label{ opacity: .55; }
+
 </style>
 </head>
 <body>
@@ -1035,16 +1062,18 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
 
   // Virtual joystick (smaller)
   const joy = document.getElementById('joystick');
+ const joyTouchOn = ()=> joy && joy.classList.add('ui-touch');
+ const joyTouchOff = ()=> joy && joy.classList.remove('ui-touch');
   const stick = document.getElementById('stick');
   let active = false, pid = null, cx=0, cy=0;
   const R = 48; // larger radius -> wider lever range
  const dead = 0.08; // smaller deadzone -> higher sensitivity
  const SENS = 1.35; // axis gain
   const setStick = (dx,dy)=>{ if(!stick) return; stick.style.transform = `translate(${dx - 24}px, ${dy - 24}px)`; };
-  const reset = ()=>{ input.ax = 0; input.ay = 0; active=false; pid=null; setStick(0,0); };
+  const reset = ()=>{ input.ax = 0; input.ay = 0; active=false; pid=null; setStick(0,0); joyTouchOff(); };
   const center = ()=>{ if(!joy) return; const r=joy.getBoundingClientRect(); cx=r.left+r.width/2; cy=r.top+r.height/2; };
 
-  const down = (e)=>{ if(!joy) return; e.preventDefault(); resumeAudio(); active=true; pid=e.pointerId; center(); joy.setPointerCapture(pid); };
+  const down = (e)=>{ if(!joy) return; e.preventDefault(); resumeAudio(); joyTouchOn(); active=true; pid=e.pointerId; center(); joy.setPointerCapture(pid); };
   const move = (e)=>{
     if(!active || e.pointerId!==pid) return;
     e.preventDefault();
@@ -1058,7 +1087,7 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
  input.ay = clamp(ny * SENS, -1, 1);
     setStick(dx,dy);
   };
-  const up = (e)=>{ if(e.pointerId!==pid) return; e.preventDefault(); reset(); };
+  const up = (e)=>{ if(e.pointerId!==pid) return; e.preventDefault(); reset(); joyTouchOff(); };
 
   if(joy){
     joy.addEventListener('pointerdown', down);
