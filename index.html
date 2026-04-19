@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+<!-- OPTIMIZED BUILD: removed unused legacy mobileUI wiring + CSS -->
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>NEON STRIKER ARRANGE - THUNDER FORCE STYLE FM BGM</title>
@@ -18,7 +19,6 @@ linear-gradient(180deg,#010309,#070d1a 50%, #02040b 100%);font-family:system-ui,
 canvas{display:block;border-radius:16px;background:#020611;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04),0 0 28px rgba(114,247,255,.08);outline:none}
 .caption{margin-top:10px;display:flex;justify-content:space-between;gap:12px;font-size:12px;letter-spacing:.08em;color:rgba(222,242,255,.8)}
 .pill{padding:5px 10px;border-radius:999px;border:1px solid rgba(114,247,255,.22);background:rgba(10,19,40,.54)}
-
 
 /* === iPhone playability tweaks v2: smaller canvas + compact joystick/buttons === */
 html,body{height:100%;}
@@ -83,24 +83,6 @@ body{touch-action:none; overscroll-behavior:none;}
 
 @media (pointer:fine){#joystick,.actions{display:none;}}
 
-
-
-/* === Mobile Control UI (Tuned) === */
-#mobileUI{
-  position:fixed; right:12px; bottom:calc(14px + env(safe-area-inset-bottom));
-  display:flex; flex-direction:column; gap:10px; z-index:80;
-}
-.btn{
-  width:76px; height:64px; border-radius:18px; display:grid; place-items:center;
-  background:rgba(10,19,40,.55); border:1px solid rgba(114,247,255,.25);
-  backdrop-filter:blur(6px); box-shadow:0 10px 28px rgba(0,0,0,.45);
-  color:#fff; font-weight:800; letter-spacing:.08em; touch-action:none; user-select:none;
-}
-.btn.small{width:58px; height:52px; font-size:12px;}
-.btn:active,.btn.active{background:rgba(114,247,255,.22); transform:scale(0.96);}
-@media(pointer:fine){#mobileUI{display:none;}}
-
-
 /* === OVERRIDE: iPhone edge controls (bottom-left joystick / top-left focus) === */
 #joystick{left:calc(0px + env(safe-area-inset-left)); bottom:calc(0px + env(safe-area-inset-bottom));}
 #focusBtn{position:fixed; left:calc(0px + env(safe-area-inset-left)); top:calc(0px + env(safe-area-inset-top));
@@ -115,12 +97,6 @@ body{touch-action:none; overscroll-behavior:none;}
 .actions{right:calc(0px + env(safe-area-inset-right)); bottom:calc(0px + env(safe-area-inset-bottom));
  display:flex; flex-direction:column; align-items:flex-end; gap:10px;}
 .actions .row{display:flex; gap:10px; justify-content:flex-end;}
-
-/* Keep legacy mobileUI hidden (avoid JS null refs in older wiring) */
-#mobileUI{display:none !important;}
-
-
-
 /* === Layout override: Right-top=BOMB, Right-middle=FIRE, Right-bottom=FOCUS+FIRE === */
 .tbtn.bombTR{
   position:fixed;
@@ -151,7 +127,6 @@ body{touch-action:none; overscroll-behavior:none;}
   .tbtn.bombTR{ width:200px; height:92px; font-size:16px; }
   .tbtn.fireMR{ width:92px; height:92px; border-radius:26px; font-size:14px; }
 }
-
 
 /* === HARD LOCK: Joystick stays bottom-left (no floating / no centering) === */
 #joystick{
@@ -674,7 +649,6 @@ function startBGM(stage, isBoss){
  }, 25);
 }
 
-
 const rand = (a,b)=>Math.random()*(b-a)+a;
 const clamp = (v,min,max)=>Math.max(min, Math.min(max, v));
 const hit = (a,b,aw,ah,bw,bh)=>a.x < b.x + bw && a.x + aw > b.x && a.y < b.y + bh && a.y + ah > b.y;
@@ -982,36 +956,6 @@ function buildStage7Schedule(){
 const BOSS_BULLET_PALETTE = ['#b56bff', '#ff4fd8', '#ff5a7a', '#ffd84d', '#ff8af2'];
 const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0};
 
-// === Mobile Button Wiring ===
-(function(){
-  const fire = document.getElementById('btnFire');
-  const focus = document.getElementById('btnFocus');
-  const bomb = document.getElementById('btnBomb');
-  const on = (el)=>el&&el.classList.add('active');
-  const off = (el)=>el&&el.classList.remove('active');
-
-  if(fire){
-    const down = e=>{ e.preventDefault(); resumeAudio(); input.shot=1; input.alt=1; on(fire); };
-    const up   = e=>{ e.preventDefault(); input.shot=0; input.alt=0; off(fire); };
-    fire.addEventListener('pointerdown', down, {passive:false});
-    fire.addEventListener('pointerup', up, {passive:false});
-    fire.addEventListener('pointercancel', up, {passive:false});
-  }
-  if(focus){
-    const down = e=>{ e.preventDefault(); input.focus=1; on(focus); };
-    const up   = e=>{ e.preventDefault(); input.focus=0; off(focus); };
-    focus.addEventListener('pointerdown', down, {passive:false});
-    focus.addEventListener('pointerup', up, {passive:false});
-    focus.addEventListener('pointercancel', up, {passive:false});
-  }
-  if(bomb){
-    bomb.addEventListener('pointerdown', e=>{ e.preventDefault(); resumeAudio(); on(bomb); }, {passive:false});
-    bomb.addEventListener('pointerup', e=>{ e.preventDefault(); input.bomb=1; off(bomb); }, {passive:false});
-    bomb.addEventListener('pointercancel', e=>{ e.preventDefault(); off(bomb); }, {passive:false});
-  }
-})();
-
-
 // === iPhone UX helpers v2 (compact joystick/buttons) ===
 (function(){
   const diag = document.getElementById('diag');
@@ -1293,11 +1237,7 @@ addEventListener('keydown', e=>{ if(e.key==='ArrowUp') input.up=1; if(e.key==='A
 addEventListener('keyup', e=>{ if(e.key==='ArrowUp') input.up=0; if(e.key==='ArrowDown') input.down=0; if(e.key==='ArrowLeft') input.left=0; if(e.key==='ArrowRight') input.right=0; if(e.key==='Shift') input.focus=0; if(e.key==='z' || e.key==='Z') input.shot=0; if(e.key==='x' || e.key==='X') input.alt=0; if(e.key==='c' || e.key==='C') input.bomb=0; });
 loop();
 </script>
-
-<!-- Mobile Buttons: SHOT+LASER / FOCUS / BOMB -->
-<div id="mobileUI" aria-hidden="true">
-  <div id="btnFire" class="btn">FIRE</div>
-  <div id="btnFocus" class="btn small">FOCUS+FIRE</div>
+<div id="btnFocus" class="btn small">FOCUS+FIRE</div>
   <div id="btnBomb" class="btn small">BOMB</div>
 </div>
 </body>
