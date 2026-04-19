@@ -49,7 +49,7 @@ body{touch-action:none; overscroll-behavior:none;}
  font-size:11px; color:rgba(222,242,255,.75); z-index:30;}
 
 /* === Virtual Joystick (smaller + higher) === */
-K6px6px; border-radius:999px;
+#joystick{position:fixed; left:calc(12px + env(safe-area-inset-left)); bottom:calc(12px + env(safe-area-inset-bottom)); width: 136px; height: 136px; border-radius:999px;
  background:rgba(114,247,255,.10); border:1px solid rgba(114,247,255,.28); backdrop-filter:blur(6px);
  box-shadow:0 10px 26px rgba(0,0,0,.35); z-index:60; touch-action:none;}
 #joystick .base{position:absolute; inset:0; border-radius:999px;
@@ -102,7 +102,7 @@ K6px6px; border-radius:999px;
 
 
 /* === OVERRIDE: iPhone edge controls (bottom-left joystick / top-left focus) === */
-#joystick{left:calc(0px + env(safe-area-inset-left)); bottom:calc(0px + env(safe-area-inset-bottom));}
+#joystick{left:calc(12px + env(safe-area-inset-left)); bottom:calc(12px + env(safe-area-inset-bottom));}
 #focusBtn{position:fixed; left:calc(0px + env(safe-area-inset-left)); top:calc(0px + env(safe-area-inset-top));
  width:96px; height:46px; border-radius:16px; z-index:80;
  border:1px solid rgba(137,255,155,.30); background:rgba(10,19,40,.38);
@@ -156,7 +156,7 @@ K6px6px; border-radius:999px;
 </head>
 <body>
 <div class="frame">
- <div class="hint-touch">TOUCH: 左下=レバー移動 / 右上=BOMB / 右中=FIRE / 右下=FOCUS+FIRE(押しっぱ)</div>
+ <div class="hint-touch">TOUCH: 左下(固定)=レバー移動 / 右上=BOMB / 右中=FIRE / 右下=FOCUS+FIRE(押しっぱ)</div>
  <div class="diag" id="diag"></div>
  <div class="rotate-hint" id="rotateHint" aria-live="polite">
   <div class="card">
