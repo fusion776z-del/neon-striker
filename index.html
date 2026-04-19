@@ -49,7 +49,7 @@ body{touch-action:none; overscroll-behavior:none;}
  font-size:11px; color:rgba(222,242,255,.75); z-index:30;}
 
 /* === Virtual Joystick (smaller + higher) === */
-#joystick{position:fixed; left:calc(12px + env(safe-area-inset-left)); bottom:calc(12px + env(safe-area-inset-bottom)); width: 136px; height: 136px; border-radius:999px;
+#joystick{position:fixed; left:12px; bottom:110px; width:104px; height:104px; border-radius:999px;
  background:rgba(114,247,255,.10); border:1px solid rgba(114,247,255,.28); backdrop-filter:blur(6px);
  box-shadow:0 10px 26px rgba(0,0,0,.35); z-index:60; touch-action:none;}
 #joystick .base{position:absolute; inset:0; border-radius:999px;
@@ -102,7 +102,7 @@ body{touch-action:none; overscroll-behavior:none;}
 
 
 /* === OVERRIDE: iPhone edge controls (bottom-left joystick / top-left focus) === */
-#joystick{left:calc(12px + env(safe-area-inset-left)); bottom:calc(12px + env(safe-area-inset-bottom));}
+#joystick{left:calc(0px + env(safe-area-inset-left)); bottom:calc(0px + env(safe-area-inset-bottom));}
 #focusBtn{position:fixed; left:calc(0px + env(safe-area-inset-left)); top:calc(0px + env(safe-area-inset-top));
  width:96px; height:46px; border-radius:16px; z-index:80;
  border:1px solid rgba(137,255,155,.30); background:rgba(10,19,40,.38);
@@ -152,6 +152,22 @@ body{touch-action:none; overscroll-behavior:none;}
   .tbtn.fireMR{ width:92px; height:92px; border-radius:26px; font-size:14px; }
 }
 
+
+/* === HARD LOCK: Joystick stays bottom-left (no floating / no centering) === */
+#joystick{
+ position:fixed !important;
+ left:calc(12px + env(safe-area-inset-left)) !important;
+ bottom:calc(12px + env(safe-area-inset-bottom)) !important;
+ right:auto !important;
+ top:auto !important;
+ width:136px !important;
+ height:136px !important;
+ transform:none !important;
+ -webkit-user-drag:none;
+ user-select:none;
+ touch-action:none;
+}
+#joystick *{ -webkit-user-drag:none; user-select:none; }
 </style>
 </head>
 <body>
