@@ -49,7 +49,7 @@ body{touch-action:none; overscroll-behavior:none;}
  font-size:11px; color:rgba(222,242,255,.75); z-index:30;}
 
 /* === Virtual Joystick (smaller + higher) === */
-#joystick{position:fixed; left:12px; bottom:110px; width:114px; height:114px; border-radius:999px;
+#joystick{position:fixed; left:12px; bottom:110px; width:104px; height:104px; border-radius:999px;
  background:rgba(114,247,255,.10); border:1px solid rgba(114,247,255,.28); backdrop-filter:blur(6px);
  box-shadow:0 10px 26px rgba(0,0,0,.35); z-index:60; touch-action:none;}
 #joystick .base{position:absolute; inset:0; border-radius:999px;
@@ -892,7 +892,7 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
   const joy = document.getElementById('joystick');
   const stick = document.getElementById('stick');
   let active = false, pid = null, cx=0, cy=0;
-  const R = 40; // +10% radius // smaller radius -> easier thumb reach
+  const R = 54; // +50% radius (was 36) // smaller radius -> easier thumb reach
   const dead = 0.12;
   const setStick = (dx,dy)=>{ if(!stick) return; stick.style.transform = `translate(${dx - 24}px, ${dy - 24}px)`; };
   const reset = ()=>{ input.ax = 0; input.ay = 0; active=false; pid=null; setStick(0,0); };
