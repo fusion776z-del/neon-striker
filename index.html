@@ -119,11 +119,44 @@ body{touch-action:none; overscroll-behavior:none;}
 /* Keep legacy mobileUI hidden (avoid JS null refs in older wiring) */
 #mobileUI{display:none !important;}
 
+
+
+/* === Layout override: Right-top=BOMB, Right-middle=FIRE, Right-bottom=FOCUS+FIRE === */
+.tbtn.bombTR{
+  position:fixed;
+  right:calc(0px + env(safe-area-inset-right));
+  top:calc(0px + env(safe-area-inset-top));
+  z-index:95;
+}
+.tbtn.fireMR{
+  position:fixed;
+  right:calc(0px + env(safe-area-inset-right));
+  top:50%;
+  transform:translateY(-50%);
+  z-index:95;
+}
+#focusBtn.focusRB{
+  position:fixed;
+  left:auto;
+  top:auto;
+  right:calc(0px + env(safe-area-inset-right));
+  bottom:calc(0px + env(safe-area-inset-bottom));
+  width:128px;
+  height:72px;
+  border-radius:22px;
+  z-index:95;
+}
+@media (min-width:430px){
+  #focusBtn.focusRB{ width:168px; height:88px; font-size:15px; }
+  .tbtn.bombTR{ width:200px; height:92px; font-size:16px; }
+  .tbtn.fireMR{ width:92px; height:92px; border-radius:26px; font-size:14px; }
+}
+
 </style>
 </head>
 <body>
 <div class="frame">
- <div class="hint-touch">TOUCH: 左下=レバー移動 / 左上=FOCUS / 右上=BOMB / 右下=FIRE(ショット+レーザー)</div>
+ <div class="hint-touch">TOUCH: 左下=レバー移動 / 右上=BOMB / 右中=FIRE / 右下=FOCUS+FIRE</div>
  <div class="diag" id="diag"></div>
  <div class="rotate-hint" id="rotateHint" aria-live="polite">
   <div class="card">
@@ -134,7 +167,7 @@ body{touch-action:none; overscroll-behavior:none;}
  </div>
  <canvas id="game" width="640" height="360" tabindex="0"></canvas>
 </div>
-<div id="focusBtn" class="tbtn green" data-hold="focus" aria-label="focus">FOCUS</div>
+<div id="focusBtn" class="tbtn green focusRB" data-hold="focus" aria-label="focus">FOCUS</div>
 <div id="joystick" aria-label="move joystick">
   <div class="label">MOVE</div>
   <div class="base"></div>
@@ -142,10 +175,10 @@ body{touch-action:none; overscroll-behavior:none;}
 </div>
 <div class="actions" aria-hidden="true">
   <div class="row">
-    <div class="tbtn wide gold" data-tap="bomb">BOMB</div>
+    <div class="tbtn wide gold bombTR" data-tap="bomb">BOMB</div>
   </div>
   <div class="row">
-    <div class="tbtn big" data-hold="fire">FIRE</div>
+    <div class="tbtn big fireMR" data-hold="fire">FIRE</div>
   </div>
 </div>
 <div class="caption">
@@ -892,8 +925,8 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
   const joy = document.getElementById('joystick');
   const stick = document.getElementById('stick');
   let active = false, pid = null, cx=0, cy=0;
-  const R = 44; // larger radius, finer control + sensitivity curve
-  const dead = 0.05; // higher sensitivity
+  const R = 36; // smaller radius -> easier thumb reach
+  const dead = 0.12;
   const setStick = (dx,dy)=>{ if(!stick) return; stick.style.transform = `translate(${dx - 24}px, ${dy - 24}px)`; };
   const reset = ()=>{ input.ax = 0; input.ay = 0; active=false; pid=null; setStick(0,0); };
   const center = ()=>{ if(!joy) return; const r=joy.getBoundingClientRect(); cx=r.left+r.width/2; cy=r.top+r.height/2; };
@@ -905,16 +938,12 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
     let dx=e.clientX-cx, dy=e.clientY-cy;
     const dist=Math.hypot(dx,dy)||1;
     if(dist>R){ const s=R/dist; dx*=s; dy*=s; }
-    
-let nx=dx/R, ny=dy/R;
-// response curve: quicker reaction near center
-const curve = (v)=> Math.sign(v)*Math.pow(Math.abs(v), 0.7);
-if(Math.abs(nx) < dead) nx = 0; else nx = curve(nx);
-if(Math.abs(ny) < dead) ny = 0; else ny = curve(ny);
-input.ax = nx;
-input.ay = ny;
-setStick(dx,dy);
-
+    let nx=dx/R, ny=dy/R;
+    if(Math.abs(nx)<dead) nx=0;
+    if(Math.abs(ny)<dead) ny=0;
+    input.ax = nx;
+    input.ay = ny;
+    setStick(dx,dy);
   };
   const up = (e)=>{ if(e.pointerId!==pid) return; e.preventDefault(); reset(); };
 
@@ -927,17 +956,21 @@ setStick(dx,dy);
     addEventListener('orientationchange', center);
   }
 
-  // Standalone FOCUS button (top-left)
+  
+// Standalone FOCUS button (now bottom-right): FOCUS + FIRE
  const focusTop = document.getElementById('focusBtn');
+ const fireBtnEl = () => document.querySelector('.actions [data-hold="fire"]');
  if(focusTop){
   const setActive2 = (el,on)=> el && el.classList.toggle('active', !!on);
-  const d = (e)=>{ e.preventDefault(); resumeAudio(); input.focus=1; setActive2(focusTop,true); };
-  const u = (e)=>{ e.preventDefault(); input.focus=0; setActive2(focusTop,false); };
+  const d = (e)=>{ e.preventDefault(); resumeAudio(); input.focus=1; input.shot=1; input.alt=1; setActive2(focusTop,true); };
+  const u = (e)=>{ e.preventDefault(); input.focus=0; setActive2(focusTop,false);
+    const fb = fireBtnEl(); const fireActive = fb && fb.classList.contains('active');
+    if(!fireActive){ input.shot=0; input.alt=0; }
+  };
   focusTop.addEventListener('pointerdown', d);
   focusTop.addEventListener('pointerup', u);
   focusTop.addEventListener('pointercancel', u);
  }
-
 // Action buttons
   const setActive = (el,on)=> el && el.classList.toggle('active', !!on);
   const actions = document.querySelector('.actions');
@@ -945,7 +978,7 @@ setStick(dx,dy);
     actions.querySelectorAll('[data-hold]').forEach(btn=>{
       const k = btn.getAttribute('data-hold');
       const onDown = (e)=>{ e.preventDefault(); resumeAudio(); if(k==='shot') input.shot=1; if(k==='laser') input.alt=1; if(k==='fire'){ input.shot=1; input.alt=1; } if(k==='focus') input.focus=1; setActive(btn,true); };
-      const onUp   = (e)=>{ e.preventDefault(); if(k==='shot') input.shot=0; if(k==='laser') input.alt=0; if(k==='fire'){ input.shot=0; input.alt=0; } if(k==='focus') input.focus=0; setActive(btn,false); };
+      const onUp   = (e)=>{ e.preventDefault(); if(k==='shot') input.shot=0; if(k==='laser') input.alt=0; if(k==='fire'){ const ft=document.getElementById('focusBtn'); const focusActive = ft && ft.classList.contains('active'); if(!focusActive){ input.shot=0; input.alt=0; } } if(k==='focus') input.focus=0; setActive(btn,false); };
       btn.addEventListener('pointerdown', onDown);
       btn.addEventListener('pointerup', onUp);
       btn.addEventListener('pointercancel', onUp);
