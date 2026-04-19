@@ -250,22 +250,20 @@ const ENEMY_BULLET_SPEED_SCALE = SE2_MODE ? 0.44 : (IS_MOBILE ? 0.46 : 0.5);
 const HOMING_UNLOCK_POWER = 5;
 const FOCUS_MOVE_SCALE = 0.62;
 const BULLET_HELL_MULT = 1.00; // SE2: reduce density
-const BOSS_BARRAGE_MULT = 0.98; // stage4+ perf: lower base boss density // SE2: reduce boss density // ★ denser boss barrages (further scaled by HP/phase) // denser boss barrages, but auto-throttled to avoid slowdowns
+const MOB_BULLET_DIV = 8; // mobs bullet density: 1/8 (boss unchanged)
+const BOSS_BARRAGE_MULT = 1.15; // SE2: reduce boss density // ★ denser boss barrages (further scaled by HP/phase) // denser boss barrages, but auto-throttled to avoid slowdowns
 function bossCount(n){
  // Adaptive density: keep patterns thick, but throttle when bullet load is high.
  const load = getBulletLoadScale(); // 0.58..1
  const bossLoad = Math.min(1, Math.max(0.55, load + 0.10));
  // ★ HP/phase scaling (only meaningful during boss fights)
- const stPerf = (boss && !boss.entering) ? (boss.stage || stage) : stage;
- const stageScale = (stPerf >= 4 ? 0.55 : 1.0);
  const hpRatio = (boss && !boss.entering) ? Math.max(0, Math.min(1, boss.hp / boss.maxHP)) : 1;
  const hpScale = 1 + (1 - hpRatio) * 0.75;                 // up to x1.75 at 0 HP
  const phaseScale = (boss && !boss.entering) ? (boss.phase===4 ? 1.55 : (boss.phase===3 ? 1.30 : (boss.phase===2 ? 1.12 : 1.0))) : 1.0;
- const target = Math.max(1, Math.round(n * BOSS_BARRAGE_MULT * bossLoad * stageScale * hpScale * phaseScale));
+ const target = Math.max(1, Math.round(n * BOSS_BARRAGE_MULT * bossLoad * hpScale * phaseScale));
  // Per-volley budget based on remaining room (prevents spikes).
  const room = Math.max(0, MAX_ENEMY_BULLETS - (enemyBullets ? enemyBullets.length : 0));
- const capBase = (SE2_MODE ? 0.08 : (IS_MOBILE ? 0.10 : 0.12));
- const cap = Math.max(1, Math.floor(room * capBase * (stPerf >= 4 ? 0.55 : 1.0))); // SE2: tighter per-volley budget
+ const cap = Math.max(1, Math.floor(room * (SE2_MODE ? 0.08 : (IS_MOBILE ? 0.10 : 0.12)))); // SE2: tighter per-volley budget
  return Math.min(target, cap);
 }
 const EXTRA_LIFE_CAPSULES = 10;
@@ -709,26 +707,28 @@ function pushEnemyBullets(batch){
  const skipStep = SE2_MODE ? Math.max(2, skipStepBase+1) : (IS_MOBILE ? Math.max(1, skipStepBase) : skipStepBase);
  let room = Math.max(0, MAX_ENEMY_BULLETS - enemyBullets.length);
  if(room <= 0) return;
-
  // ★ boss scaling
  const bossActive = (boss && !boss.entering);
  const hpRatio = bossActive ? Math.max(0, Math.min(1, boss.hp / boss.maxHP)) : 1;
  const phase = bossActive ? (boss.phase || 1) : 1;
- const speedMul = bossActive ? (1 + (1 - hpRatio) * 0.18 + (phase-1) * 0.04) * (((boss.stage || stage) >= 4) ? 0.92 : 1) : 1;
+ const speedMul = bossActive ? (1 + (1 - hpRatio) * 0.22 + (phase-1) * 0.05) : 1;
 
  let pushed = 0;
+ let mobToggle = 0;
  for(let i=0;i<batch.length && pushed<room;i++){
   if(skipStep && (i % (skipStep+1)) !== 0) continue;
   const b = batch[i];
   if(!b) continue;
+  // Mobs only: keep 1 out of 8 bullets (boss bullets keep full density)
+  if(!b.boss){ if((mobToggle++ % MOB_BULLET_DIV) !== 0) continue; }
 
   if(b.boss && bossActive){
    b.vx *= speedMul; b.vy *= speedMul;
-   if(phase>=4 && ((boss.stage || stage) < 4)) {
-  b.curve = (b.curve != null) ? b.curve : ((i%2===0)? 0.0032 : -0.0032);
-  b.wave = b.wave || 1;
-  b.seed = (b.seed != null) ? b.seed : (boss.t + i*7);
- }
+   if(phase>=4){
+    b.curve = (b.curve != null) ? b.curve : ((i%2===0)? 0.0032 : -0.0032);
+    b.wave = b.wave || 1;
+    b.seed = (b.seed != null) ? b.seed : (boss.t + i*7);
+   }
   }
 
   enemyBullets.push(b);
@@ -738,7 +738,7 @@ function pushEnemyBullets(batch){
    const ang = Math.atan2(b.vy, b.vx);
    const spd = Math.hypot(b.vx, b.vy) || 1;
    const spread = phase>=4 ? 0.11 : 0.08;
-   const copies = ((boss.stage || stage) >= 4) ? 0 : (phase>=4 ? 2 : 1);
+   const copies = phase>=4 ? 2 : 1;
    for(let c=0;c<copies && room>0;c++){
     const dir = (c%2===0) ? 1 : -1;
     const a2 = ang + dir*spread;
@@ -1205,19 +1205,14 @@ function updatePlay(){
   const phase = boss.phase || 1;
   const px0 = player.x + player.w/2, py0 = player.y + player.h/2;
   // ★ extra pattern layer (adds variety as phases advance)
- if(!boss.entering){
-   const stPerf2 = (boss.stage || stage);
-   if(stPerf2 < 4){
-     const extra=[];
-     if(phase>=2) extra.push(...bossExtraSpiral(cx, cy, phase, load, boss.t*0.03, '#ff8af2'));
-     if(phase>=3) extra.push(...bossExtraMines(cx, cy, phase, load));
-     if(phase>=4) extra.push(...bossExtraBouncers(cx, cy, phase, load));
-     extra.push(...bossExtraAimedBurst(cx, cy, px0, py0, phase, load));
-     pushEnemyBullets(extra);
-   } else {
-     // Stage4+: extra layer disabled to prevent slowdown
-   }
- }
+  if(!boss.entering){
+    const extra=[];
+    if(phase>=2) extra.push(...bossExtraSpiral(cx, cy, phase, load, boss.t*0.03, '#ff8af2'));
+    if(phase>=3) extra.push(...bossExtraMines(cx, cy, phase, load));
+    if(phase>=4) extra.push(...bossExtraBouncers(cx, cy, phase, load));
+    extra.push(...bossExtraAimedBurst(cx, cy, px0, py0, phase, load));
+    pushEnemyBullets(extra);
+  }
   // (existing stage-specific patterns follow)
 if(st===7){ const load = getBulletLoadScale(); const px=player.x+player.w/2, py=player.y+player.h/2; if(boss.phase===1){ const batch=[]; const lanes=bossCount(22); const gapCenter = 5 + Math.floor((Math.sin(boss.t*.05)+1)*4); const mirrorGap = lanes - 1 - gapCenter; for(let i=0;i<lanes;i++){ if(Math.abs(i-gapCenter)<=1 || Math.abs(i-mirrorGap)<=1) continue; const yOff=(i-(lanes-1)/2)*13; batch.push({x:cx,y:cy+yOff,vx:-4.2,vy:Math.sin((boss.t+i)*.18)*.9 + yOff*.018,w:9,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[i % BOSS_BULLET_PALETTE.length]}); batch.push({x:cx+18,y:cy+yOff,vx:-3.8,vy:-Math.sin((boss.t+i)*.18)*.8 - yOff*.016,w:9,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[(i+2) % BOSS_BULLET_PALETTE.length]}); } const aim=aimVelocity(cx,cy,px,py,4.8); for(let k=-Math.floor(bossCount(3)/2);k<=Math.floor(bossCount(3)/2);k++){ const a=Math.atan2(aim.vy,aim.vx)+k*.16; batch.push({x:cx,y:cy,vx:Math.cos(a)*4.8,vy:Math.sin(a)*4.8,w:10,h:5,enemy:true,boss:true,color:'#ffd84d'}); } 
             // Extra microFan (denser, tighter)
@@ -1226,9 +1221,7 @@ if(st===7){ const load = getBulletLoadScale(); const px=player.x+player.w/2, py=
               const a2=Math.atan2(aim2.vy,aim2.vx)+k*0.09;
               batch.push({x:cx,y:cy,vx:Math.cos(a2)*5.4,vy:Math.sin(a2)*5.4,w:9,h:4,enemy:true,boss:true,color:'#ff5a7a'});
             }
-            pushEnemyBullets(batch); boss.shot = Math.max(6, Math.floor(14/getStageDensity())); } else if(boss.phase===2){ const batch=[]; const emitters=[58,H*.24,H/2,H*.76,H-58]; for(let e=0;e<emitters.length;e++){ const n = bossCount(load < 0.7 ? 11 : 13); const gateBias = (e%2===0 ? -1 : 1) * (.10 + Math.sin((boss.t+e*9)*.05)*.08); for(let a=0;a<n;a++){ if(Math.abs(a-(n-1)/2)<=0) continue; const ang=Math.PI + (a/(n-1)-.5)*1.78 + gateBias; batch.push({x:cx,y:emitters[e],vx:Math.cos(ang)*(4.0+e*.12),vy:Math.sin(ang)*(4.0+e*.12),w:9,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[(a+e) % BOSS_BULLET_PALETTE.length]}); } } for(let a=0;a<bossCount(18);a++){ if(a%4===0) continue; const ang=Math.PI + (a/17-.5)*1.98 + boss.t*.02; batch.push({x:cx,y:cy,vx:Math.cos(ang)*4.5,vy:Math.sin(ang)*4.5,w:9,h:9,enemy:true,boss:true,round:true,color:'#ff8af2'}); } pushEnemyBullets(batch); boss.shot = Math.max(6, Math.floor(12/getStageDensity())); } else { const batch=[]; const rings = bossCount(load < 0.65 ? 3 : 4); const perRing = bossCount(load < 0.65 ? 20 : 24); for(let ring=0; ring<rings; ring++){ for(let a=0;a<perRing;a++){ if(a%6===0 || a%6===1) continue; const ang=Math.PI + (a/perRing)*2.34 + boss.t*.03 + ring*.18; batch.push({x:cx,y:cy,vx:Math.cos(ang)*(3.7+ring*.55),vy:Math.sin(ang)*(3.7+ring*.55),w:9,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[(a+ring) % BOSS_BULLET_PALETTE.length]}); } } const aim=aimVelocity(cx,cy,px,py,5.0); for(let k=-Math.floor(bossCount(5)/2);k<=Math.floor(bossCount(5)/2);k++){ const a=Math.atan2(aim.vy,aim.vx)+k*.18; batch.push({x:cx,y:cy,vx:Math.cos(a)*5.0,vy:Math.sin(a)*5.0,w:10,h:5,enemy:true,boss:true,color:'#72f7ff'}); } pushEnemyBullets(batch); boss.shot = Math.max(5, Math.floor(10/getStageDensity())); } } else if(st===6){ const load = getBulletLoadScale(); const px=player.x+player.w/2, py=player.y+player.h/2; if(boss.phase===1){ const batch=[]; for(let i=0;i<bossCount(12);i++){ const yOff=(i-5.5)*16; batch.push({x:cx,y:cy+yOff,vx:-5.0,vy:Math.sin((boss.t+i)*.22)*1.2 + yOff*.028,w:11,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[i % BOSS_BULLET_PALETTE.length]}); batch.push({x:cx+20,y:cy+yOff,vx:-4.5,vy:-Math.sin((boss.t+i)*.22)*1.2 - yOff*.022,w:10,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[(i+2) % BOSS_BULLET_PALETTE.length]}); } const aim=aimVelocity(cx,cy,px,py,5.8); for(let k=-Math.floor(bossCount(5)/2);k<=Math.floor(bossCount(5)/2);k++){ const a=Math.atan2(aim.vy,aim.vx)+k*.10; batch.push({x:cx,y:cy,vx:Math.cos(a)*5.8,vy:Math.sin(a)*5.8,w:12,h:5,enemy:true,boss:true,color:'#ffd84d'}); } pushEnemyBullets(batch); boss.shot = Math.max(7, Math.floor(18/getStageDensity())); } else if(boss.phase===2){ const batch=[]; const emitters=[84,H/2,H-84]; for(let e=0;e<emitters.length;e++){ const n = bossCount(load < 0.7 ? 7 : 10); for(let a=0;a<n;a++){ const ang=Math.PI + (a/(n-1)-.5)*1.55 + Math.sin((boss.t+e*9)*.06)*.25; batch.push({x:cx,y:emitters[e],vx:Math.cos(ang)*(4.7+e*.15),vy:Math.sin(ang)*(4.7+e*.15),w:10,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[(a+e) % BOSS_BULLET_PALETTE.length]}); } } for(let a=0;a<bossCount(12);a++){ const ang=Math.PI + (a/11-.5)*1.95 + boss.t*.03; batch.push({x:cx,y:cy,vx:Math.cos(ang)*5.1,vy:Math.sin(ang)*5.1,w:10,h:10,enemy:true,boss:true,round:true,color:'#ff8af2'}); } pushEnemyBullets(batch); boss.shot = Math.max(7, Math.floor(16/getStageDensity())); } else { const batch=[]; const rings = bossCount(load < 0.65 ? 2 : 3); const perRing = bossCount(load < 0.65 ? 12 : 18); for(let ring=0; ring<rings; ring++){ for(let a=0;a<perRing;a++){ const ang=Math.PI + (a/perRing)*2.18 + boss.t*.04 + ring*.22; batch.push({x:cx,y:cy,vx:Math.cos(ang)*(4.1+ring*.7),vy:Math.sin(ang)*(4.1+ring*.7),w:10,h:6,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[(a+ring) % BOSS_BULLET_PALETTE.length]}); } } const aim=aimVelocity(cx,cy,px,py,6.2); for(let k=-Math.floor(bossCount(7)/2);k<=Math.floor(bossCount(7)/2);k++){ const a=Math.atan2(aim.vy,aim.vx)+k*.08; batch.push({x:cx,y:cy,vx:Math.cos(a)*6.2,vy:Math.sin(a)*6.2,w:14,h:5,enemy:true,boss:true,color:'#72f7ff'}); } pushEnemyBullets(batch); boss.shot = Math.max(6, Math.floor(13/getStageDensity())); } } else if(boss.phase===1){ const batch=[]; const load = getBulletLoadScale(); const step = load < 0.65 ? 2 : 1; const span=bossCount(15); for(let k=-Math.floor(span/2);k<=Math.floor(span/2);k+=step){ const ci=(k+15)%BOSS_BULLET_PALETTE.length; batch.push({x:cx,y:cy,vx:-4.9,vy:k*.62,w:12,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[ci]}); } pushEnemyBullets(batch); boss.shot=Math.max(6, Math.floor((30-stage*4-boss.phase*6) / getStageDensity())); } else if(boss.phase===2){ const load = getBulletLoadScale(); const batch=[]; const step = load < 0.65 ? 2 : 1; const spanA=bossCount(21); for(let a=-Math.floor(spanA/2);a<=Math.floor(spanA/2);a+=step){ const ci=(a+20)%BOSS_BULLET_PALETTE.length; batch.push({x:cx,y:cy,vx:Math.cos(Math.PI + a*.11)*5.6,vy:Math.sin(Math.PI + a*.11)*5.6,w:10,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[ci]}); } for(let yy=48, idx=0; yy<H-48; yy+=56*(load < 0.8 ? 2 : 1), idx++) batch.push({x:cx,y:yy,vx:-6.4,vy:0,w:16,h:6,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[idx % BOSS_BULLET_PALETTE.length]}); pushEnemyBullets(batch); boss.shot=Math.max(6, Math.floor((30-stage*4-boss.phase*6) / getStageDensity())); } else { const load = getBulletLoadScale(); const rings = bossCount(load < 0.65 ? 2 : 3); const perRing = bossCount(load < 0.65 ? 14 : load < 0.8 ? 18 : 24); const batch=[]; for(let ring=0; ring<rings; ring++){ for(let a=0;a<perRing;a++){ const div=Math.max(1,perRing-1); const ang=Math.PI + (a/div-.5)*2.05 + ring*.05; const ci=(a + ring*2) % BOSS_BULLET_PALETTE.length; batch.push({x:cx,y:cy,vx:Math.cos(ang)*(4.6+ring*0.9),vy:Math.sin(ang)*(4.6+ring*0.9),w:10,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[ci]}); } } pushEnemyBullets(batch); boss.shot=Math.max(6, Math.floor((30-stage*4-boss.phase*6) / getStageDensity())); } } // PERF: Stage4+ slow boss firing interval
- if((boss.stage || stage) >= 4){ boss.shot = Math.ceil(boss.shot * 1.35); }
- const p=getPlayerHitbox(); if(hit(p,boss,p.w,p.h,boss.w,boss.h)) collidedWithBoss=true; } }
+            pushEnemyBullets(batch); boss.shot = Math.max(6, Math.floor(14/getStageDensity())); } else if(boss.phase===2){ const batch=[]; const emitters=[58,H*.24,H/2,H*.76,H-58]; for(let e=0;e<emitters.length;e++){ const n = bossCount(load < 0.7 ? 11 : 13); const gateBias = (e%2===0 ? -1 : 1) * (.10 + Math.sin((boss.t+e*9)*.05)*.08); for(let a=0;a<n;a++){ if(Math.abs(a-(n-1)/2)<=0) continue; const ang=Math.PI + (a/(n-1)-.5)*1.78 + gateBias; batch.push({x:cx,y:emitters[e],vx:Math.cos(ang)*(4.0+e*.12),vy:Math.sin(ang)*(4.0+e*.12),w:9,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[(a+e) % BOSS_BULLET_PALETTE.length]}); } } for(let a=0;a<bossCount(18);a++){ if(a%4===0) continue; const ang=Math.PI + (a/17-.5)*1.98 + boss.t*.02; batch.push({x:cx,y:cy,vx:Math.cos(ang)*4.5,vy:Math.sin(ang)*4.5,w:9,h:9,enemy:true,boss:true,round:true,color:'#ff8af2'}); } pushEnemyBullets(batch); boss.shot = Math.max(6, Math.floor(12/getStageDensity())); } else { const batch=[]; const rings = bossCount(load < 0.65 ? 3 : 4); const perRing = bossCount(load < 0.65 ? 20 : 24); for(let ring=0; ring<rings; ring++){ for(let a=0;a<perRing;a++){ if(a%6===0 || a%6===1) continue; const ang=Math.PI + (a/perRing)*2.34 + boss.t*.03 + ring*.18; batch.push({x:cx,y:cy,vx:Math.cos(ang)*(3.7+ring*.55),vy:Math.sin(ang)*(3.7+ring*.55),w:9,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[(a+ring) % BOSS_BULLET_PALETTE.length]}); } } const aim=aimVelocity(cx,cy,px,py,5.0); for(let k=-Math.floor(bossCount(5)/2);k<=Math.floor(bossCount(5)/2);k++){ const a=Math.atan2(aim.vy,aim.vx)+k*.18; batch.push({x:cx,y:cy,vx:Math.cos(a)*5.0,vy:Math.sin(a)*5.0,w:10,h:5,enemy:true,boss:true,color:'#72f7ff'}); } pushEnemyBullets(batch); boss.shot = Math.max(5, Math.floor(10/getStageDensity())); } } else if(st===6){ const load = getBulletLoadScale(); const px=player.x+player.w/2, py=player.y+player.h/2; if(boss.phase===1){ const batch=[]; for(let i=0;i<bossCount(12);i++){ const yOff=(i-5.5)*16; batch.push({x:cx,y:cy+yOff,vx:-5.0,vy:Math.sin((boss.t+i)*.22)*1.2 + yOff*.028,w:11,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[i % BOSS_BULLET_PALETTE.length]}); batch.push({x:cx+20,y:cy+yOff,vx:-4.5,vy:-Math.sin((boss.t+i)*.22)*1.2 - yOff*.022,w:10,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[(i+2) % BOSS_BULLET_PALETTE.length]}); } const aim=aimVelocity(cx,cy,px,py,5.8); for(let k=-Math.floor(bossCount(5)/2);k<=Math.floor(bossCount(5)/2);k++){ const a=Math.atan2(aim.vy,aim.vx)+k*.10; batch.push({x:cx,y:cy,vx:Math.cos(a)*5.8,vy:Math.sin(a)*5.8,w:12,h:5,enemy:true,boss:true,color:'#ffd84d'}); } pushEnemyBullets(batch); boss.shot = Math.max(7, Math.floor(18/getStageDensity())); } else if(boss.phase===2){ const batch=[]; const emitters=[84,H/2,H-84]; for(let e=0;e<emitters.length;e++){ const n = bossCount(load < 0.7 ? 7 : 10); for(let a=0;a<n;a++){ const ang=Math.PI + (a/(n-1)-.5)*1.55 + Math.sin((boss.t+e*9)*.06)*.25; batch.push({x:cx,y:emitters[e],vx:Math.cos(ang)*(4.7+e*.15),vy:Math.sin(ang)*(4.7+e*.15),w:10,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[(a+e) % BOSS_BULLET_PALETTE.length]}); } } for(let a=0;a<bossCount(12);a++){ const ang=Math.PI + (a/11-.5)*1.95 + boss.t*.03; batch.push({x:cx,y:cy,vx:Math.cos(ang)*5.1,vy:Math.sin(ang)*5.1,w:10,h:10,enemy:true,boss:true,round:true,color:'#ff8af2'}); } pushEnemyBullets(batch); boss.shot = Math.max(7, Math.floor(16/getStageDensity())); } else { const batch=[]; const rings = bossCount(load < 0.65 ? 2 : 3); const perRing = bossCount(load < 0.65 ? 12 : 18); for(let ring=0; ring<rings; ring++){ for(let a=0;a<perRing;a++){ const ang=Math.PI + (a/perRing)*2.18 + boss.t*.04 + ring*.22; batch.push({x:cx,y:cy,vx:Math.cos(ang)*(4.1+ring*.7),vy:Math.sin(ang)*(4.1+ring*.7),w:10,h:6,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[(a+ring) % BOSS_BULLET_PALETTE.length]}); } } const aim=aimVelocity(cx,cy,px,py,6.2); for(let k=-Math.floor(bossCount(7)/2);k<=Math.floor(bossCount(7)/2);k++){ const a=Math.atan2(aim.vy,aim.vx)+k*.08; batch.push({x:cx,y:cy,vx:Math.cos(a)*6.2,vy:Math.sin(a)*6.2,w:14,h:5,enemy:true,boss:true,color:'#72f7ff'}); } pushEnemyBullets(batch); boss.shot = Math.max(6, Math.floor(13/getStageDensity())); } } else if(boss.phase===1){ const batch=[]; const load = getBulletLoadScale(); const step = load < 0.65 ? 2 : 1; const span=bossCount(15); for(let k=-Math.floor(span/2);k<=Math.floor(span/2);k+=step){ const ci=(k+15)%BOSS_BULLET_PALETTE.length; batch.push({x:cx,y:cy,vx:-4.9,vy:k*.62,w:12,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[ci]}); } pushEnemyBullets(batch); boss.shot=Math.max(6, Math.floor((30-stage*4-boss.phase*6) / getStageDensity())); } else if(boss.phase===2){ const load = getBulletLoadScale(); const batch=[]; const step = load < 0.65 ? 2 : 1; const spanA=bossCount(21); for(let a=-Math.floor(spanA/2);a<=Math.floor(spanA/2);a+=step){ const ci=(a+20)%BOSS_BULLET_PALETTE.length; batch.push({x:cx,y:cy,vx:Math.cos(Math.PI + a*.11)*5.6,vy:Math.sin(Math.PI + a*.11)*5.6,w:10,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[ci]}); } for(let yy=48, idx=0; yy<H-48; yy+=56*(load < 0.8 ? 2 : 1), idx++) batch.push({x:cx,y:yy,vx:-6.4,vy:0,w:16,h:6,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[idx % BOSS_BULLET_PALETTE.length]}); pushEnemyBullets(batch); boss.shot=Math.max(6, Math.floor((30-stage*4-boss.phase*6) / getStageDensity())); } else { const load = getBulletLoadScale(); const rings = bossCount(load < 0.65 ? 2 : 3); const perRing = bossCount(load < 0.65 ? 14 : load < 0.8 ? 18 : 24); const batch=[]; for(let ring=0; ring<rings; ring++){ for(let a=0;a<perRing;a++){ const div=Math.max(1,perRing-1); const ang=Math.PI + (a/div-.5)*2.05 + ring*.05; const ci=(a + ring*2) % BOSS_BULLET_PALETTE.length; batch.push({x:cx,y:cy,vx:Math.cos(ang)*(4.6+ring*0.9),vy:Math.sin(ang)*(4.6+ring*0.9),w:10,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[ci]}); } } pushEnemyBullets(batch); boss.shot=Math.max(6, Math.floor((30-stage*4-boss.phase*6) / getStageDensity())); } } const p=getPlayerHitbox(); if(hit(p,boss,p.w,p.h,boss.w,boss.h)) collidedWithBoss=true; } }
   let hitByBullet = false; for(let i=enemyBullets.length-1;i>=0;i--){ const b=enemyBullets[i]; // movement (with optional delay)
 if(b.wait && b.wait>0){
  b.wait--;
