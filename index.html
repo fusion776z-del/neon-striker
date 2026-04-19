@@ -112,22 +112,35 @@ body{touch-action:none; overscroll-behavior:none;}
 #mobileUI{display:none !important;}
 
 
-/* === FOCUS BUTTON (RIGHT-BOTTOM ONLY, single source of truth) === */
-#focusBtn{
-  position:fixed;
-  left:auto; top:auto;
-  right:calc(0px + env(safe-area-inset-right));
-  bottom:calc(0px + env(safe-area-inset-bottom));
-  width:132px; height:72px; border-radius:22px;
-  z-index:999;
+
+/* === FINAL RIGHT-SIDE BUTTON LAYOUT === */
+/* Right-top: BOMB */
+#bombBtn{position:fixed; right:calc(0px + env(safe-area-inset-right)); top:calc(0px + env(safe-area-inset-top)); z-index:96;}
+/* Right-middle: FIRE */
+#fireBtn{position:fixed; right:calc(0px + env(safe-area-inset-right)); top:50%; transform:translateY(-50%); z-index:96;}
+/* Right-bottom: FOCUS (button element remains #focusBtn) */
+#focusBtn{position:fixed; left:auto; top:auto; right:calc(0px + env(safe-area-inset-right)); bottom:calc(0px + env(safe-area-inset-bottom));
+ width:132px; height:72px; border-radius:22px; z-index:96;
+ border:1px solid rgba(137,255,155,.30); background:rgba(10,19,40,.38);
+ backdrop-filter:blur(6px); box-shadow:0 10px 26px rgba(0,0,0,.45);
+ display:grid; place-items:center; color:rgba(255,255,255,.92);
+ font-weight:900; letter-spacing:.10em; user-select:none; -webkit-user-select:none; touch-action:none;}
+#focusBtn:active,#focusBtn.active{transform:scale(0.96); background:rgba(137,255,155,.16);} 
+
+/* Keep .actions visible on touch devices; we only pin inner buttons */
+
+/* Pro Max sizing */
+@media (min-width:430px){
+ #focusBtn{width:168px; height:88px; font-size:15px; border-radius:26px;}
+ #bombBtn{width:200px; height:92px; font-size:16px; border-radius:26px;}
+ #fireBtn{width:92px; height:92px; font-size:14px; border-radius:26px;}
 }
-#focusBtn:active,#focusBtn.active{transform:scale(0.96);} 
 
 </style>
 </head>
 <body>
 <div class="frame">
- <div class="hint-touch">TOUCH: 左下=レバー移動 / 左上=FOCUS / 右上=BOMB / 右下=FIRE(ショット+レーザー)</div>
+ <div class="hint-touch">TOUCH: 左下=レバー移動 / 右上=BOMB / 右中=FIRE / 右下=FOCUS</div>
  <div class="diag" id="diag"></div>
  <div class="rotate-hint" id="rotateHint" aria-live="polite">
   <div class="card">
@@ -146,10 +159,10 @@ body{touch-action:none; overscroll-behavior:none;}
 </div>
 <div class="actions" aria-hidden="true">
   <div class="row">
-    <div class="tbtn wide gold" data-tap="bomb">BOMB</div>
+    <div class="tbtn wide gold" data-tap="bomb" id="bombBtn">BOMB</div>
   </div>
   <div class="row">
-    <div class="tbtn big" data-hold="fire">FIRE</div>
+    <div class="tbtn big" data-hold="fire" id="fireBtn">FIRE</div>
   </div>
 </div>
 <div class="caption">
@@ -896,7 +909,7 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
   const joy = document.getElementById('joystick');
   const stick = document.getElementById('stick');
   let active = false, pid = null, cx=0, cy=0;
-  const R = 54; // +50% lever detection // smaller radius -> easier thumb reach
+  const R = 54; // lever range +50% (was 36)
   const dead = 0.12;
   const setStick = (dx,dy)=>{ if(!stick) return; stick.style.transform = `translate(${dx - 24}px, ${dy - 24}px)`; };
   const reset = ()=>{ input.ax = 0; input.ay = 0; active=false; pid=null; setStick(0,0); };
@@ -927,7 +940,8 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
     addEventListener('orientationchange', center);
   }
 
-  // Standalone FOCUS button (top-left)
+  
+// Standalone FOCUS button (right-bottom)
  const focusTop = document.getElementById('focusBtn');
  if(focusTop){
   const setActive2 = (el,on)=> el && el.classList.toggle('active', !!on);
@@ -937,7 +951,6 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
   focusTop.addEventListener('pointerup', u);
   focusTop.addEventListener('pointercancel', u);
  }
-
 // Action buttons
   const setActive = (el,on)=> el && el.classList.toggle('active', !!on);
   const actions = document.querySelector('.actions');
