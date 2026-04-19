@@ -103,14 +103,6 @@ body{touch-action:none; overscroll-behavior:none;}
 
 /* === OVERRIDE: iPhone edge controls (bottom-left joystick / top-left focus) === */
 #joystick{left:calc(0px + env(safe-area-inset-left)); bottom:calc(0px + env(safe-area-inset-bottom));}
-#focusBtn{position:fixed; left:calc(0px + env(safe-area-inset-left)); top:calc(0px + env(safe-area-inset-top));
- width:96px; height:46px; border-radius:16px; z-index:80;
- border:1px solid rgba(137,255,155,.30); background:rgba(10,19,40,.38);
- backdrop-filter:blur(6px); box-shadow:0 8px 22px rgba(0,0,0,.35);
- display:grid; place-items:center; color:rgba(255,255,255,.92);
- font-weight:900; letter-spacing:.10em; user-select:none; -webkit-user-select:none; touch-action:none;}
-#focusBtn:active,#focusBtn.active{transform:scale(0.96); background:rgba(137,255,155,.16);} 
-
 /* Right buttons: BOMB on top, FIRE below (LASER button removed) */
 .actions{right:calc(0px + env(safe-area-inset-right)); bottom:calc(0px + env(safe-area-inset-bottom));
  display:flex; flex-direction:column; align-items:flex-end; gap:10px;}
@@ -120,34 +112,30 @@ body{touch-action:none; overscroll-behavior:none;}
 #mobileUI{display:none !important;}
 
 
-
-/* === FINAL FORCE LAYOUT (wins over any earlier rules) === */
-/* Right-top: BOMB */
-#bombBtn{position:fixed !important; right:calc(0px + env(safe-area-inset-right)) !important; top:calc(0px + env(safe-area-inset-top)) !important; z-index:999 !important;}
-/* Right-middle: FIRE */
-#fireBtn{position:fixed !important; right:calc(0px + env(safe-area-inset-right)) !important; top:50% !important; transform:translateY(-50%) !important; z-index:999 !important;}
-/* Right-bottom: FOCUS (+FIRE) */
-#focusBtn{position:fixed !important; left:auto !important; top:auto !important;
-  right:calc(0px + env(safe-area-inset-right)) !important;
-  bottom:calc(0px + env(safe-area-inset-bottom)) !important;
-  z-index:999 !important;}
-
-/* Optional sizing (SE2 default / Pro Max larger) */
-@media (max-width:429px){
-  #focusBtn{width:132px !important; height:72px !important; border-radius:22px !important; font-size:14px !important;}
-  #bombBtn{width:168px !important; height:72px !important; border-radius:24px !important; font-size:14px !important;}
+/* === FOCUS BUTTON (RIGHT-BOTTOM ONLY, single source of truth) === */
+#focusBtn{
+  position:fixed;
+  left:auto; top:auto;
+  right:calc(0px + env(safe-area-inset-right));
+  bottom:calc(0px + env(safe-area-inset-bottom));
+  width:132px; height:72px; border-radius:22px;
+  z-index:999;
+  border:1px solid rgba(137,255,155,.30);
+  background:rgba(10,19,40,.38);
+  backdrop-filter:blur(6px);
+  box-shadow:0 10px 26px rgba(0,0,0,.45);
+  display:grid; place-items:center;
+  color:rgba(255,255,255,.92);
+  font-weight:900; letter-spacing:.10em;
+  user-select:none; -webkit-user-select:none; touch-action:none;
 }
-@media (min-width:430px){
-  #focusBtn{width:168px !important; height:88px !important; border-radius:26px !important; font-size:15px !important;}
-  #bombBtn{width:200px !important; height:92px !important; border-radius:26px !important; font-size:16px !important;}
-  #fireBtn{width:92px !important; height:92px !important; border-radius:26px !important; font-size:14px !important;}
-}
+#focusBtn:active,#focusBtn.active{transform:scale(0.96); background:rgba(137,255,155,.16);} 
 
 </style>
 </head>
 <body>
 <div class="frame">
- <div class="hint-touch">TOUCH: 左下=レバー移動 / 右上=BOMB / 右中=FIRE / 右下=FOCUS+FIRE</div>
+ <div class="hint-touch">TOUCH: 左下=レバー移動 / 左上=FOCUS / 右上=BOMB / 右下=FIRE(ショット+レーザー)</div>
  <div class="diag" id="diag"></div>
  <div class="rotate-hint" id="rotateHint" aria-live="polite">
   <div class="card">
@@ -166,10 +154,10 @@ body{touch-action:none; overscroll-behavior:none;}
 </div>
 <div class="actions" aria-hidden="true">
   <div class="row">
-    <div class="tbtn wide gold" data-tap="bomb" id="bombBtn">BOMB</div>
+    <div class="tbtn wide gold" data-tap="bomb">BOMB</div>
   </div>
   <div class="row">
-    <div class="tbtn big" data-hold="fire" id="fireBtn">FIRE</div>
+    <div class="tbtn big" data-hold="fire">FIRE</div>
   </div>
 </div>
 <div class="caption">
@@ -947,33 +935,7 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
     addEventListener('orientationchange', center);
   }
 
-  // Standalone FOCUS button (top-left)
- const focusTop = document.getElementById('focusBtn');
- if(focusTop){
-  const setActive2 = (el,on)=> el && el.classList.toggle('active', !!on);
-  const d = (e)=>{ e.preventDefault(); resumeAudio(); input.focus=1; setActive2(focusTop,true); };
-  const u = (e)=>{ e.preventDefault(); input.focus=0; setActive2(focusTop,false); };
-  focusTop.addEventListener('pointerdown', d);
-  focusTop.addEventListener('pointerup', u);
-  focusTop.addEventListener('pointercancel', u);
- }
-
-
-// Standalone FOCUS button (bottom-right) = FOCUS + FIRE
- const focusBtn = document.getElementById('focusBtn');
- const fireBtn = document.getElementById('fireBtn');
- if(focusBtn){
-   const setA = (el,on)=> el && el.classList.toggle('active', !!on);
-   const down = (e)=>{ e.preventDefault(); resumeAudio(); input.focus=1; input.shot=1; input.alt=1; setA(focusBtn,true); };
-   const up = (e)=>{ e.preventDefault(); input.focus=0; setA(focusBtn,false);
-     const fireHeld = fireBtn && fireBtn.classList.contains('active');
-     if(!fireHeld){ input.shot=0; input.alt=0; }
-   };
-   focusBtn.addEventListener('pointerdown', down);
-   focusBtn.addEventListener('pointerup', up);
-   focusBtn.addEventListener('pointercancel', up);
- }
-
+  
 // Action buttons
   const setActive = (el,on)=> el && el.classList.toggle('active', !!on);
   const actions = document.querySelector('.actions');
@@ -981,7 +943,7 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
     actions.querySelectorAll('[data-hold]').forEach(btn=>{
       const k = btn.getAttribute('data-hold');
       const onDown = (e)=>{ e.preventDefault(); resumeAudio(); if(k==='shot') input.shot=1; if(k==='laser') input.alt=1; if(k==='fire'){ input.shot=1; input.alt=1; } if(k==='focus') input.focus=1; setActive(btn,true); };
-      const onUp   = (e)=>{ e.preventDefault(); if(k==='shot') input.shot=0; if(k==='laser') input.alt=0; if(k==='fire'){ const fb=document.getElementById('focusBtn'); const focusHeld = fb && fb.classList.contains('active'); if(!focusHeld){ input.shot=0; input.alt=0; } } if(k==='focus') input.focus=0; setActive(btn,false); };
+      const onUp   = (e)=>{ e.preventDefault(); if(k==='shot') input.shot=0; if(k==='laser') input.alt=0; if(k==='fire'){ input.shot=0; input.alt=0; } if(k==='focus') input.focus=0; setActive(btn,false); };
       btn.addEventListener('pointerdown', onDown);
       btn.addEventListener('pointerup', onUp);
       btn.addEventListener('pointercancel', onUp);
