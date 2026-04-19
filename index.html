@@ -859,8 +859,81 @@ const CAPSULES = [
 function rollCapsule(){ return CAPSULES[Math.floor(Math.random()*CAPSULES.length)]; }
 function calcPower(){ return 1 + (wideLv-1) + optionLv + (laserLv-1) + homingLv; }
 function getStageDensity(){ return ({1:1.00,2:1.18,3:1.38,4:1.60,5:1.90,6:2.15,7:2.38})[stage] || 2.38; }
-function buildStage6Schedule(){ const q=[]; const push=(at,cfg)=>q.push({at,cfg}); let t=18; const lanes=[68,140,212,284,356,428]; for(let wave=0; wave<4; wave++){ for(let i=0;i<3;i++){ const y=lanes[(wave*2+i)%lanes.length]; push(t + i*16,{type:'zig',y,speed:4.2+wave*.10,hp:6,move:'sineFast',pattern:'fork',shot:20-i*2,seed:wave*10+i}); push(t + i*16 + 8,{type:'zig',y:H-36-y,speed:4.0+wave*.10,hp:6,move:'sineFastFlip',pattern:'fork',shot:24-i*2,seed:wave*20+i}); } t += 84; } const towerYs=[92,182,272,362,452]; for(let i=0;i<towerYs.length;i++) push(t + i*14,{type:'gun',y:towerYs[i],speed:2.3,hp:10,w:34,h:28,move:'holdLine',holdX:W-210-i*12,pattern:'aimedFan',shot:18,seed:i}); t += 128; for(let i=0;i<8;i++) push(t+i*12,{type:'dash',y:(i%2===0?54:H-74),speed:5.3,hp:6,move:(i%2===0?'diveDown':'diveUp'),pattern:'needleTrail',shot:10,seed:i}); t += 126; for(let i=0;i<4;i++) push(t+i*26,{type:'spray',y:96+i*108,speed:2.0,hp:12,move:'wall',holdX:W-150-i*24,pattern:'curtain',shot:16,seed:i}); t += 144; for(let i=0;i<5;i++){ const y=84+i*84; push(t+i*18,{type:'mine',y,speed:2.2,hp:12,move:'swoop',pattern:'burstMine',shot:18,seed:i}); } t += 136; for(let i=0;i<2;i++) push(t+i*22,{type:'spray',y:150+i*210,speed:2.6,hp:18,w:34,h:34,move:'wall',holdX:W-180,pattern:'spiralBloom',shot:12,seed:50+i}); for(let i=0;i<3;i++) push(t+18+i*24,{type:'gun',y:110+i*150,speed:2.4,hp:12,move:'holdLine',holdX:W-240,pattern:'cross',shot:14,seed:60+i}); t += 180; for(let i=0;i<6;i++) push(t+i*10,{type:i%2===0?'zig':'dash',y:70+(i%6)*72,speed:5.0,hp:7,move:i%2===0?'sineFast':'diveMid',pattern:i%2===0?'fork':'needleTrail',shot:10,seed:80+i}); return q; }
-function buildStage7Schedule(){ const q=[]; const push=(at,cfg)=>q.push({at,cfg}); let t=14; const lanes=[54,112,170,228,286,344,402,460]; for(let wave=0; wave<5; wave++){ for(let i=0;i<4;i++){ const y=lanes[(wave+i)%lanes.length]; push(t + i*12,{type:'zig',y,speed:4.6+wave*.12,hp:7,move:'sineFast',pattern:'fork',shot:16-i,seed:100+wave*10+i}); push(t + i*12 + 6,{type:'zig',y:H-34-y,speed:4.4+wave*.12,hp:7,move:'sineFastFlip',pattern:'fork',shot:18-i,seed:140+wave*12+i}); } t += 70; } const wallYs=[78,150,222,294,366,438]; for(let i=0;i<wallYs.length;i++) push(t + i*10,{type:'spray',y:wallYs[i],speed:2.4,hp:13,move:'wall',holdX:W-146-i*10,pattern:'curtain',shot:14,seed:200+i}); t += 110; for(let i=0;i<8;i++) push(t+i*10,{type:'dash',y:(i%2===0?50:H-70),speed:5.6,hp:7,move:(i%2===0?'diveDown':'diveUp'),pattern:'needleTrail',shot:9,seed:240+i}); t += 118; for(let i=0;i<6;i++){ const y=72+i*70; push(t+i*14,{type:'mine',y,speed:2.4,hp:13,move:'swoop',pattern:'burstMine',shot:16,seed:300+i}); } t += 118; for(let i=0;i<3;i++) push(t+i*18,{type:'spray',y:116+i*152,speed:2.8,hp:18,w:34,h:34,move:'wall',holdX:W-172-i*18,pattern:'spiralBloom',shot:11,seed:360+i}); for(let i=0;i<4;i++) push(t+12+i*20,{type:'gun',y:86+i*104,speed:2.6,hp:13,move:'holdLine',holdX:W-224,pattern:'cross',shot:13,seed:400+i}); t += 152; for(let i=0;i<10;i++) push(t+i*8,{type:i%2===0?'zig':'dash',y:52+(i%10)*44,speed:5.4,hp:8,move:i%2===0?'sineFast':'diveMid',pattern:i%2===0?'fork':'needleTrail',shot:8,seed:460+i}); t += 92; for(let i=0;i<6;i++) push(t+i*10,{type:'gun',y:72+i*68,speed:2.7,hp:14,move:'holdLine',holdX:W-212,pattern:'aimedFan',shot:13,seed:520+i}); return q; }
+function buildStage6Schedule(){
+ const q=[]; const push=(at,cfg)=>q.push({at,cfg});
+ // Dynamic lanes so enemies never spawn off-screen (was using hard-coded 540p lanes).
+ const makeLanes=(count, top=56, bottom=H-74)=>{
+  const b=Math.max(top+1, bottom);
+  const step=(b-top)/(count-1);
+  return Array.from({length:count},(_,i)=>Math.round(top+i*step));
+ };
+ let t=18;
+ const lanes=makeLanes(6, 56, H-84);
+ for(let wave=0; wave<4; wave++){
+  for(let i=0;i<3;i++){
+   const y=lanes[(wave*2+i)%lanes.length];
+   push(t + i*16,{type:'zig',y,speed:4.2+wave*.10,hp:6,move:'sineFast',pattern:'fork',shot:20-i*2,seed:wave*10+i});
+   push(t + i*16 + 8,{type:'zig',y:(H-36)-y,speed:4.0+wave*.10,hp:6,move:'sineFastFlip',pattern:'fork',shot:24-i*2,seed:wave*20+i});
+  }
+  t += 84;
+ }
+ const towerYs=makeLanes(5, 84, H-92);
+ for(let i=0;i<towerYs.length;i++) push(t + i*14,{type:'gun',y:towerYs[i],speed:2.3,hp:10,w:34,h:28,move:'holdLine',holdX:W-210-i*12,pattern:'aimedFan',shot:18,seed:i});
+ t += 128;
+ for(let i=0;i<8;i++) push(t+i*12,{type:'dash',y:(i%2===0?54:H-74),speed:5.3,hp:6,move:(i%2===0?'diveDown':'diveUp'),pattern:'needleTrail',shot:10,seed:i});
+ t += 126;
+ const sprayYs=makeLanes(4, 96, H-96);
+ for(let i=0;i<sprayYs.length;i++) push(t+i*26,{type:'spray',y:sprayYs[i],speed:2.0,hp:12,move:'wall',holdX:W-150-i*24,pattern:'curtain',shot:16,seed:i});
+ t += 144;
+ const mineYs=makeLanes(5, 84, H-96);
+ for(let i=0;i<mineYs.length;i++){
+  const y=mineYs[i];
+  push(t+i*18,{type:'mine',y,speed:2.2,hp:12,move:'swoop',pattern:'burstMine',shot:18,seed:i});
+ }
+ t += 136;
+ for(let i=0;i<2;i++) push(t+i*22,{type:'spray',y:Math.round(H*0.35)+i*Math.round(H*0.30),speed:2.6,hp:18,w:34,h:34,move:'wall',holdX:W-180,pattern:'spiralBloom',shot:12,seed:50+i});
+ for(let i=0;i<3;i++) push(t+18+i*24,{type:'gun',y:Math.round(H*0.28)+i*Math.round(H*0.28),speed:2.4,hp:12,move:'holdLine',holdX:W-240,pattern:'cross',shot:14,seed:60+i});
+ t += 180;
+ for(let i=0;i<6;i++) push(t+i*10,{type:i%2===0?'zig':'dash',y:Math.round(H*0.18)+(i%6)*Math.round((H*0.70)/5),speed:5.0,hp:7,move:i%2===0?'sineFast':'diveMid',pattern:i%2===0?'fork':'needleTrail',shot:10,seed:80+i});
+ return q;
+ }
+function buildStage7Schedule(){
+ const q=[]; const push=(at,cfg)=>q.push({at,cfg});
+ const makeLanes=(count, top=52, bottom=H-78)=>{
+  const b=Math.max(top+1, bottom);
+  const step=(b-top)/(count-1);
+  return Array.from({length:count},(_,i)=>Math.round(top+i*step));
+ };
+ let t=14;
+ const lanes=makeLanes(8, 52, H-90);
+ for(let wave=0; wave<5; wave++){
+  for(let i=0;i<4;i++){
+   const y=lanes[(wave+i)%lanes.length];
+   push(t + i*12,{type:'zig',y,speed:4.6+wave*.12,hp:7,move:'sineFast',pattern:'fork',shot:16-i,seed:100+wave*10+i});
+   push(t + i*12 + 6,{type:'zig',y:(H-34)-y,speed:4.4+wave*.12,hp:7,move:'sineFastFlip',pattern:'fork',shot:18-i,seed:140+wave*12+i});
+  }
+  t += 70;
+ }
+ const wallYs=makeLanes(6, 78, H-86);
+ for(let i=0;i<wallYs.length;i++) push(t + i*10,{type:'spray',y:wallYs[i],speed:2.4,hp:13,move:'wall',holdX:W-146-i*10,pattern:'curtain',shot:14,seed:200+i});
+ t += 110;
+ for(let i=0;i<8;i++) push(t+i*10,{type:'dash',y:(i%2===0?50:H-70),speed:5.6,hp:7,move:(i%2===0?'diveDown':'diveUp'),pattern:'needleTrail',shot:9,seed:240+i});
+ t += 118;
+ const mineYs=makeLanes(6, 72, H-92);
+ for(let i=0;i<mineYs.length;i++){
+  const y=mineYs[i];
+  push(t+i*14,{type:'mine',y,speed:2.4,hp:13,move:'swoop',pattern:'burstMine',shot:16,seed:300+i});
+ }
+ t += 118;
+ for(let i=0;i<3;i++) push(t+i*18,{type:'spray',y:Math.round(H*0.32)+i*Math.round(H*0.22),speed:2.8,hp:18,w:34,h:34,move:'wall',holdX:W-172-i*18,pattern:'spiralBloom',shot:11,seed:360+i});
+ for(let i=0;i<4;i++) push(t+12+i*20,{type:'gun',y:Math.round(H*0.24)+i*Math.round(H*0.20),speed:2.6,hp:13,move:'holdLine',holdX:W-224,pattern:'cross',shot:13,seed:400+i});
+ t += 152;
+ for(let i=0;i<10;i++) push(t+i*8,{type:i%2===0?'zig':'dash',y:Math.round(H*0.16)+(i%10)*Math.round((H*0.74)/9),speed:5.4,hp:8,move:i%2===0?'sineFast':'diveMid',pattern:i%2===0?'fork':'needleTrail',shot:8,seed:460+i});
+ t += 92;
+ const gunYs=makeLanes(6, 72, H-92);
+ for(let i=0;i<gunYs.length;i++) push(t+i*10,{type:'gun',y:gunYs[i],speed:2.7,hp:14,move:'holdLine',holdX:W-212,pattern:'aimedFan',shot:13,seed:520+i});
+ return q;
+ }
 const BOSS_BULLET_PALETTE = ['#b56bff', '#ff4fd8', '#ff5a7a', '#ffd84d', '#ff8af2'];
 const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0};
 
@@ -1015,7 +1088,20 @@ function beginStage(){ paused=false; bullets=[]; enemyBullets=[]; enemies=[]; po
 function startGame(){ stage=1; score=0; lives=3; bombs=2; capsuleCount=0; lifeUpTimer=0; wideLv=1; optionLv=0; laserLv=1; homingLv=1; power=calcPower(); message=''; beginStage(); paused=false; state='play'; }
 function nextStage(){ paused=false; stage++; if(stage>7){ state='ending'; stopBGM(); hiScore=Math.max(hiScore,score); return; } message=''; bombs=Math.min(5,bombs+1); beginStage(); }
 function safeLoseLife(){ if(!player || player.inv > 0 || clearTimer > 0 || state!=='play') return; lives--; shake = 0; sfx.hit(); addBurst(player.x+12, player.y+9, '#ff6262', 28, 6, 28, 3.4); enemyBullets = []; lasers = []; bombFlash = 0; if(lives < 0){ stopBGM(); hiScore=Math.max(hiScore,score); paused=false; state='title'; message='GAME OVER'; return; } resetPlayer(); }
-function createBoss(){ const table=[null,{w:130,h:110,hp:1600,name:'PHOTON CORE', color:'#ffb347'},{w:160,h:128,hp:2400,name:'RAZOR SERAPH', color:'#ff5db1'},{w:200,h:150,hp:3400,name:'OBSIDIAN REX', color:'#72f7ff'},{w:232,h:172,hp:4700,name:'NEON JUDGMENT', color:'#89ff9b'},{w:260,h:188,hp:6200,name:'AURORA TYRANT', color:'#ffd86b'},{w:286,h:208,hp:8200,name:'COSMIC PARALLAX', color:'#9f8cff'},{w:314,h:224,hp:9800,name:'PRISM OVERDRIVE', color:'#7cf8ff'}]; const t=table[stage] || table[7]; return {x:W+t.w+20,y:H/2-t.h/2,w:t.w,h:t.h,hp:t.hp,maxHP:t.hp,name:t.name,color:t.color,entering:true,t:0,shot:22,phase:1,stage:stage}; }
+function createBoss(){
+ const table=[null,
+  {w:150,h:120,hp:1600,name:'PHOTON CORE', color:'#ffb347'},
+  {w:170,h:132,hp:2400,name:'RAZOR SERAPH', color:'#ff5db1'},
+  {w:190,h:146,hp:3400,name:'OBSIDIAN REX', color:'#72f7ff'},
+  {w:210,h:158,hp:4700,name:'NEON JUDGMENT', color:'#89ff9b'},
+  {w:225,h:168,hp:6200,name:'AURORA TYRANT', color:'#ffd86b'},
+  {w:235,h:176,hp:8200,name:'COSMIC PARALLAX', color:'#9f8cff'},
+  {w:240,h:182,hp:9800,name:'PRISM OVERDRIVE', color:'#7cf8ff'}
+ ];
+ const t=table[stage] || table[7];
+ // Keep boss visually impactful but avoid late-stage screen oppression (cap size progression).
+ return {x:W+t.w+20,y:H/2-t.h/2,w:t.w,h:t.h,hp:t.hp,maxHP:t.hp,name:t.name,color:t.color,entering:true,t:0,shot:22,phase:1,stage:stage};
+ }
 function handleBossDefeat(){ if(clearTimer>0) return;
  const bx = boss ? (boss.x + boss.w/2) : (W*.66);
  const by = boss ? (boss.y + boss.h/2) : (H*.40);
