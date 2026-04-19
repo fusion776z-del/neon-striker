@@ -120,16 +120,8 @@ body{touch-action:none; overscroll-behavior:none;}
   bottom:calc(0px + env(safe-area-inset-bottom));
   width:132px; height:72px; border-radius:22px;
   z-index:999;
-  border:1px solid rgba(137,255,155,.30);
-  background:rgba(10,19,40,.38);
-  backdrop-filter:blur(6px);
-  box-shadow:0 10px 26px rgba(0,0,0,.45);
-  display:grid; place-items:center;
-  color:rgba(255,255,255,.92);
-  font-weight:900; letter-spacing:.10em;
-  user-select:none; -webkit-user-select:none; touch-action:none;
 }
-#focusBtn:active,#focusBtn.active{transform:scale(0.96); background:rgba(137,255,155,.16);} 
+#focusBtn:active,#focusBtn.active{transform:scale(0.96);} 
 
 </style>
 </head>
@@ -904,7 +896,7 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
   const joy = document.getElementById('joystick');
   const stick = document.getElementById('stick');
   let active = false, pid = null, cx=0, cy=0;
-  const R = 36; // smaller radius -> easier thumb reach
+  const R = 54; // +50% lever detection // smaller radius -> easier thumb reach
   const dead = 0.12;
   const setStick = (dx,dy)=>{ if(!stick) return; stick.style.transform = `translate(${dx - 24}px, ${dy - 24}px)`; };
   const reset = ()=>{ input.ax = 0; input.ay = 0; active=false; pid=null; setStick(0,0); };
@@ -935,7 +927,17 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
     addEventListener('orientationchange', center);
   }
 
-  
+  // Standalone FOCUS button (top-left)
+ const focusTop = document.getElementById('focusBtn');
+ if(focusTop){
+  const setActive2 = (el,on)=> el && el.classList.toggle('active', !!on);
+  const d = (e)=>{ e.preventDefault(); resumeAudio(); input.focus=1; setActive2(focusTop,true); };
+  const u = (e)=>{ e.preventDefault(); input.focus=0; setActive2(focusTop,false); };
+  focusTop.addEventListener('pointerdown', d);
+  focusTop.addEventListener('pointerup', u);
+  focusTop.addEventListener('pointercancel', u);
+ }
+
 // Action buttons
   const setActive = (el,on)=> el && el.classList.toggle('active', !!on);
   const actions = document.querySelector('.actions');
