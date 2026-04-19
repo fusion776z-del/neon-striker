@@ -197,6 +197,9 @@ body{touch-action:none; overscroll-behavior:none;}
   --joyIdleOpacity: .32;   /* 触っていない時 */
   --joyTouchOpacity: .08; /* 触っている間（透明化） */
   --joyFade: 120ms;
+  --btnIdleOpacity: .28;  /* 右側ボタン: 触っていない時 */
+  --btnTouchOpacity: .10; /* 右側ボタン: 触っている間（透明化） */
+  --btnFade: 120ms;
 }
 
 /* 画面外寄りに（数値を大きくするとさらに外へ） */
@@ -211,11 +214,18 @@ body{touch-action:none; overscroll-behavior:none;}
 #joystick.ui-touch{
   opacity: var(--joyTouchOpacity) !important;
 }
-
-/* つまみとベースも控えめに */
 #joystick .base{ opacity: .55; }
 #joystick .stick{ opacity: .55; }
 #joystick .label{ opacity: .55; }
+
+/* === Right-side buttons: translucent + extra transparent while pressing === */
+.tbtn, #focusBtn{
+  opacity: var(--btnIdleOpacity) !important;
+  transition: opacity var(--btnFade) ease, transform var(--btnFade) ease;
+}
+.tbtn.ui-touch, #focusBtn.ui-touch{
+  opacity: var(--btnTouchOpacity) !important;
+}
 
 </style>
 </head>
@@ -1064,6 +1074,8 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
   const joy = document.getElementById('joystick');
  const joyTouchOn = ()=> joy && joy.classList.add('ui-touch');
  const joyTouchOff = ()=> joy && joy.classList.remove('ui-touch');
+ const uiTouchOn = (el)=> el && el.classList.add('ui-touch');
+ const uiTouchOff = (el)=> el && el.classList.remove('ui-touch');
   const stick = document.getElementById('stick');
   let active = false, pid = null, cx=0, cy=0;
   const R = 48; // larger radius -> wider lever range
@@ -1104,8 +1116,8 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
  const fireBtnEl = () => document.querySelector('.actions [data-hold="fire"]');
  if(focusTop){
   const setActive2 = (el,on)=> el && el.classList.toggle('active', !!on);
-  const d = (e)=>{ e.preventDefault(); resumeAudio(); input.focus=1; input.shot=1; input.alt=1; setActive2(focusTop,true); };
-  const u = (e)=>{ e.preventDefault(); input.focus=0; setActive2(focusTop,false);
+  const d = (e)=>{ e.preventDefault(); resumeAudio(); input.focus=1; input.shot=1; input.alt=1; setActive2(focusTop,true); uiTouchOn(focusTop); };
+  const u = (e)=>{ e.preventDefault(); input.focus=0; setActive2(focusTop,false); uiTouchOff(focusTop);
     const fb = fireBtnEl(); const fireActive = fb && fb.classList.contains('active');
     if(!fireActive){ input.shot=0; input.alt=0; }
   };
@@ -1119,8 +1131,8 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
   if(actions){
     actions.querySelectorAll('[data-hold]').forEach(btn=>{
       const k = btn.getAttribute('data-hold');
-      const onDown = (e)=>{ e.preventDefault(); resumeAudio(); if(k==='shot') input.shot=1; if(k==='laser') input.alt=1; if(k==='fire'){ input.shot=1; input.alt=1; } if(k==='focus') input.focus=1; setActive(btn,true); };
-      const onUp   = (e)=>{ e.preventDefault(); if(k==='shot') input.shot=0; if(k==='laser') input.alt=0; if(k==='fire'){ const ft=document.getElementById('focusBtn'); const focusActive = ft && ft.classList.contains('active'); if(!focusActive){ input.shot=0; input.alt=0; } } if(k==='focus') input.focus=0; setActive(btn,false); };
+      const onDown = (e)=>{ e.preventDefault(); resumeAudio(); if(k==='shot') input.shot=1; if(k==='laser') input.alt=1; if(k==='fire'){ input.shot=1; input.alt=1; } if(k==='focus') input.focus=1; setActive(btn,true); uiTouchOn(btn); };
+      const onUp   = (e)=>{ e.preventDefault(); if(k==='shot') input.shot=0; if(k==='laser') input.alt=0; if(k==='fire'){ const ft=document.getElementById('focusBtn'); const focusActive = ft && ft.classList.contains('active'); if(!focusActive){ input.shot=0; input.alt=0; } } if(k==='focus') input.focus=0; setActive(btn,false); uiTouchOff(btn); };
       btn.addEventListener('pointerdown', onDown);
       btn.addEventListener('pointerup', onUp);
       btn.addEventListener('pointercancel', onUp);
@@ -1129,7 +1141,7 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
 
     actions.querySelectorAll('[data-tap]').forEach(btn=>{
       const k = btn.getAttribute('data-tap');
-      btn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); resumeAudio(); setActive(btn,true); });
+      btn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); resumeAudio(); setActive(btn,true); uiTouchOn(btn); });
       btn.addEventListener('pointerup', (e)=>{
         e.preventDefault();
         if(k==='bomb') input.bomb = 1;
@@ -1137,9 +1149,9 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
           if(state==='play' && clearTimer<=0){ paused = !paused; }
           resumeAudio();
         }
-        setActive(btn,false);
+        setActive(btn,false); uiTouchOff(btn);
       });
-      btn.addEventListener('pointercancel', (e)=>{ e.preventDefault(); setActive(btn,false); });
+      btn.addEventListener('pointercancel', (e)=>{ e.preventDefault(); setActive(btn,false); uiTouchOff(btn); });
     });
   }
 
