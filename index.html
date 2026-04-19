@@ -1215,7 +1215,61 @@ function drawBoss(){ if(!boss) return; ctx.save(); ctx.translate(boss.x+boss.w/2
 function drawBullet(b){ ctx.save(); const heavyBulletLoad = (IS_MOBILE && b.enemy) || (b.enemy && enemyBullets && enemyBullets.length > BULLET_SOFTCAP); if(!b.enemy && b.homing){ ctx.translate(b.x + b.w/2, b.y + b.h/2); const ang = Math.atan2(b.vy, b.vx); ctx.rotate(ang); ctx.fillStyle = '#ffb347'; ctx.shadowBlur = 20; ctx.shadowColor = '#ffb347'; ctx.beginPath(); ctx.moveTo(7, 0); ctx.lineTo(0, -5); ctx.lineTo(-5, 0); ctx.lineTo(0, 5); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.95)'; ctx.fillRect(-2, -1, 4, 2); } else { const enemyColor = b.color || '#ff9a3d'; ctx.fillStyle=b.enemy ? enemyColor : '#72f7ff'; ctx.shadowBlur=b.enemy ? (heavyBulletLoad ? 0 : (b.boss ? 18 : 14)) : 18; ctx.shadowColor=b.enemy ? enemyColor : '#72f7ff'; if(b.enemy && b.round){ ctx.beginPath(); ctx.arc(b.x+b.w/2,b.y+b.h/2,heavyBulletLoad ? Math.max(2, b.w*0.42) : b.w/2,0,Math.PI*2); ctx.fill(); } else { ctx.fillRect(b.x,b.y, heavyBulletLoad ? Math.max(4, b.w*0.9) : b.w, heavyBulletLoad ? Math.max(3, b.h*0.9) : b.h); } } ctx.restore(); }
 function drawLaser(l){ ctx.save(); const a=l.life/l.maxLife; ctx.globalAlpha=.65*a; ctx.strokeStyle=l.color; ctx.lineWidth=l.w; ctx.shadowBlur = (IS_MOBILE ? 0 : 26); ctx.shadowColor=l.color; ctx.beginPath(); ctx.moveTo(l.x1,l.y1); ctx.lineTo(l.x2,l.y2); ctx.stroke(); ctx.restore(); }
 function drawPower(p){ const core = p.color || '#89ff9b'; const edge = p.stroke || '#e7ffb3'; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(time*.08); ctx.shadowBlur = (IS_MOBILE ? 0 : 18); ctx.shadowColor=core; ctx.strokeStyle=edge; ctx.lineWidth=3; ctx.beginPath(); for(let i=0;i<4;i++){ const a=i*Math.PI/2; const x=Math.cos(a)*8,y=Math.sin(a)*8; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);} ctx.closePath(); ctx.stroke(); ctx.globalAlpha=.92; ctx.fillStyle=core; ctx.fillRect(-2,-2,4,4); ctx.restore(); } function drawTerrains(){ for(const t of terrains){ ctx.save(); ctx.fillStyle = t.color; ctx.strokeStyle = t.stroke; ctx.lineWidth = 2; ctx.shadowBlur = 16; ctx.shadowColor = t.stroke; roundRect(t.x,t.y,t.w,t.h,10,true,true); ctx.fillStyle = 'rgba(255,255,255,.10)'; roundRect(t.x+2,t.y+2,Math.max(0,t.w-4),Math.min(6, Math.max(0,t.h-4)),8,true,false); ctx.restore(); } }
-function drawHUD(){ ctx.save(); ctx.fillStyle='rgba(10,18,40,.54)'; ctx.strokeStyle='rgba(114,247,255,.16)'; ctx.lineWidth=1; roundRect(14,14,308,82,12,true,true); roundRect(W-330,14,316,74,14,true,true); ctx.fillStyle='#d7f5ff'; ctx.font='700 13px sans-serif'; ctx.fillText('S ' + score, 24, 34); ctx.fillText('HI ' + hiScore, 24, 54); ctx.fillText('STG ' + stage, 24, 74); ctx.fillText('L ' + Math.max(0,lives), 122, 34); ctx.fillText('B ' + bombs, 122, 54); ctx.fillText('1UP ' + capsuleCount + '/10', 122, 74); ctx.fillText('P ' + calcPower(), 196, 34); ctx.fillStyle = homingLv >= 1 ? '#ffb347' : 'rgba(255,255,255,.72)'; ctx.fillText('H ' + (homingLv >= 1 ? 'ON' : 'OFF'), 196, 54); ctx.fillStyle='#ff9dd3'; ctx.fillText('W' + wideLv + ' O' + optionLv + ' L' + laserLv + ' H' + homingLv, 196, 74); if(boss){ ctx.fillStyle='rgba(255,255,255,.78)'; ctx.font='700 17px sans-serif'; ctx.fillText('BOSS ' + boss.name, W-312, 40); ctx.fillStyle='rgba(255,255,255,.18)'; roundRect(W-310,52,286,14,999,true,false); const r=Math.max(0,boss.hp/boss.maxHP); const g=ctx.createLinearGradient(W-310,0,W-24,0); g.addColorStop(0,'#72f7ff'); g.addColorStop(.45,'#ff5db1'); g.addColorStop(1,'#ffb347'); ctx.fillStyle=g; roundRect(W-310,52,286*r,14,999,true,false); } ctx.restore(); }
+function drawHUD(){
+ // ★ HUDは固定。ほぼ見えないレベルまで文字を透明化（近接時は更に消える）
+ const hudX = 14, hudY = 14, hudW = 308, hudH = 82;
+ let bgA = 0.10;   // 通常時背景（かなり薄い）
+ let txA = 0.42;   // 通常時文字（かなり薄い）
+ if(state==='play' && player){
+  const px = player.x + player.w*0.5;
+  const py = player.y + player.h*0.5;
+  const nx = Math.max(hudX, Math.min(px, hudX + hudW));
+  const ny = Math.max(hudY, Math.min(py, hudY + hudH));
+  const d = Math.hypot(px - nx, py - ny);
+  const near = 90;    // 近づいたらすぐ消える
+  const far  = 240;   // 離れた時のみわずかに見える
+  const t = Math.max(0, Math.min(1, (d - near) / (far - near)));
+  bgA = 0.01 + (0.10-0.01)*t;   // 重なるとほぼ消滅
+  txA = 0.12 + (0.42-0.12)*t;   // 文字はほぼ見えない
+ }
+ ctx.save();
+ ctx.fillStyle = `rgba(10,18,40,${bgA.toFixed(3)})`;
+ ctx.strokeStyle = 'rgba(114,247,255,.06)';
+ ctx.lineWidth = 1;
+ ctx.shadowBlur = 6;
+ ctx.shadowColor = 'rgba(0,0,0,.28)';
+ roundRect(hudX,hudY,hudW,hudH,12,true,true);
+ roundRect(W-330,14,316,74,14,true,true);
+ ctx.shadowBlur = 0;
+ ctx.fillStyle = `rgba(215,245,255,${txA.toFixed(3)})`;
+ ctx.font = '700 13px sans-serif';
+ ctx.fillText('S ' + score, 24, hudY+20);
+ ctx.fillText('HI ' + hiScore, 24, hudY+40);
+ ctx.fillText('STG ' + stage, 24, hudY+60);
+ ctx.fillText('L ' + Math.max(0,lives), 122, hudY+20);
+ ctx.fillText('B ' + bombs, 122, hudY+40);
+ ctx.fillText('1UP ' + capsuleCount + '/10', 122, hudY+60);
+ ctx.fillText('P ' + calcPower(), 196, hudY+20);
+ ctx.fillStyle = homingLv >= 1 ? `rgba(255,179,71,${(txA*0.8).toFixed(3)})` : `rgba(255,255,255,${(txA*0.6).toFixed(3)})`;
+ ctx.fillText('H ' + (homingLv >= 1 ? 'ON' : 'OFF'), 196, hudY+40);
+ ctx.fillStyle = `rgba(255,157,211,${(txA*0.8).toFixed(3)})`;
+ ctx.fillText('W' + wideLv + ' O' + optionLv + ' L' + laserLv + ' H' + homingLv, 196, hudY+60);
+ if(boss){
+  ctx.fillStyle = 'rgba(255,255,255,.55)';
+  ctx.font = '700 17px sans-serif';
+  ctx.fillText('BOSS ' + boss.name, W-312, 40);
+  ctx.fillStyle = 'rgba(255,255,255,.08)';
+  roundRect(W-310,52,286,14,999,true,false);
+  const r=Math.max(0,boss.hp/boss.maxHP);
+  const g=ctx.createLinearGradient(W-310,0,W-24,0);
+  g.addColorStop(0,'rgba(114,247,255,.55)');
+  g.addColorStop(.45,'rgba(255,93,177,.55)');
+  g.addColorStop(1,'rgba(255,179,71,.55)');
+  ctx.fillStyle=g;
+  roundRect(W-310,52,286*r,14,999,true,false);
+ }
+ ctx.restore();
+ }
 function drawTitle(){ glowText('NEON STRIKER',W/2,180,68,'center','#72f7ff'); glowText('NEON RAINBOW BOSS BULLETS',W/2,250,42,'center','#ff5db1'); ctx.save(); ctx.textAlign='center'; ctx.fillStyle='rgba(255,255,255,.84)'; ctx.font='600 22px sans-serif'; ctx.fillText('PRESS Z TO START',W/2,412); if(message){ ctx.fillStyle='#ffb347'; ctx.fillText(message,W/2,448); } ctx.restore(); }
 function drawEnding(){ glowText('MISSION COMPLETE',W/2,220,56,'center','#89ff9b'); glowText('FINAL SCORE ' + score,W/2,300,40,'center','#72f7ff'); ctx.save(); ctx.textAlign='center'; ctx.fillStyle='rgba(255,255,255,.82)'; ctx.font='600 20px sans-serif'; ctx.fillText('Zでタイトルへ',W/2,380); ctx.restore(); }
 function drawError(){ ctx.save(); ctx.fillStyle='rgba(0,0,0,.85)'; ctx.fillRect(0,0,W,H); glowText('ERROR SAFE MODE',W/2,180,48,'center','#ff6262'); ctx.textAlign='center'; ctx.fillStyle='#fff'; ctx.font='18px sans-serif'; ctx.fillText('ゲーム更新中に例外が発生しました。Zでタイトルへ戻れます。',W/2,260); ctx.fillStyle='rgba(255,255,255,.8)'; ctx.font='14px monospace'; const lines = (errorMessage||'').slice(0,120).match(/.{1,48}/g)||[]; lines.forEach((s,i)=>ctx.fillText(s,W/2,300+i*20)); ctx.restore(); }
