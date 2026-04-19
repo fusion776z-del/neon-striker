@@ -103,12 +103,7 @@ body{touch-action:none; overscroll-behavior:none;}
 
 /* === OVERRIDE: iPhone edge controls (bottom-left joystick / top-left focus) === */
 #joystick{left:calc(0px + env(safe-area-inset-left)); bottom:calc(0px + env(safe-area-inset-bottom));}
-#focusBtn{position:fixed; left:calc(0px + env(safe-area-inset-left)); top:calc(0px + env(safe-area-inset-top));
- width:96px; height:46px; border-radius:16px; z-index:80;
- border:1px solid rgba(137,255,155,.30); background:rgba(10,19,40,.38);
- backdrop-filter:blur(6px); box-shadow:0 8px 22px rgba(0,0,0,.35);
- display:grid; place-items:center; color:rgba(255,255,255,.92);
- font-weight:900; letter-spacing:.10em; user-select:none; -webkit-user-select:none; touch-action:none;}
+
 #focusBtn:active,#focusBtn.active{transform:scale(0.96); background:rgba(137,255,155,.16);} 
 
 /* Right buttons: BOMB on top, FIRE below (LASER button removed) */
@@ -120,9 +115,27 @@ body{touch-action:none; overscroll-behavior:none;}
 #mobileUI{display:none !important;}
 
 
-/* === UI tweak: BOMB button pinned to top-right (rightmost top) === */
-.tbtn.bombTopRight{position:fixed; right:calc(0px + env(safe-area-inset-right)); top:calc(0px + env(safe-area-inset-top));
-  width:132px; height:54px; border-radius:18px; z-index:90;}
+/* === Responsive Button Sizes: SE2 vs Pro Max === */
+/* Default: SE2 / small phones */
+#focusBtn{
+  position:fixed;
+  left:calc(0px + env(safe-area-inset-left));
+  top:calc(0px + env(safe-area-inset-top));
+  width:128px; height:64px;
+  border-radius:20px;
+  z-index:80;
+}
+.tbtn.wide{
+  width:152px; height:68px;
+  border-radius:22px;
+  font-size:14px;
+}
+
+/* Pro Max / large phones */
+@media (min-width:430px) {
+  #focusBtn{ width:168px; height:80px; font-size:15px; }
+  .tbtn.wide{ width:200px; height:92px; font-size:16px; }
+}
 
 </style>
 </head>
@@ -147,7 +160,7 @@ body{touch-action:none; overscroll-behavior:none;}
 </div>
 <div class="actions" aria-hidden="true">
   <div class="row">
-    <div class="tbtn wide gold bombTopRight" data-tap="bomb">BOMB</div>
+    <div class="tbtn wide gold" data-tap="bomb">BOMB</div>
   </div>
   <div class="row">
     <div class="tbtn big" data-hold="fire">FIRE</div>
