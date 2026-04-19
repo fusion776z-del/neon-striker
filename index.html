@@ -49,7 +49,7 @@ body{touch-action:none; overscroll-behavior:none;}
  font-size:11px; color:rgba(222,242,255,.75); z-index:30;}
 
 /* === Virtual Joystick (smaller + higher) === */
-#joystick{position:fixed; left:12px; bottom:110px; width:104px; height:104px; border-radius:999px;
+K6px6px; border-radius:999px;
  background:rgba(114,247,255,.10); border:1px solid rgba(114,247,255,.28); backdrop-filter:blur(6px);
  box-shadow:0 10px 26px rgba(0,0,0,.35); z-index:60; touch-action:none;}
 #joystick .base{position:absolute; inset:0; border-radius:999px;
@@ -156,7 +156,7 @@ body{touch-action:none; overscroll-behavior:none;}
 </head>
 <body>
 <div class="frame">
- <div class="hint-touch">TOUCH: 左下=レバー移動 / 右上=BOMB / 右中=FIRE / 右下=FOCUS+FIRE</div>
+ <div class="hint-touch">TOUCH: 左下=レバー移動 / 右上=BOMB / 右中=FIRE / 右下=FOCUS+FIRE(押しっぱ)</div>
  <div class="diag" id="diag"></div>
  <div class="rotate-hint" id="rotateHint" aria-live="polite">
   <div class="card">
@@ -167,7 +167,7 @@ body{touch-action:none; overscroll-behavior:none;}
  </div>
  <canvas id="game" width="640" height="360" tabindex="0"></canvas>
 </div>
-<div id="focusBtn" class="tbtn green focusRB" data-hold="focus" aria-label="focus">FOCUS</div>
+<div id="focusBtn" class="tbtn green focusRB" data-hold="focus" aria-label="focus">FOCUS+FIRE</div>
 <div id="joystick" aria-label="move joystick">
   <div class="label">MOVE</div>
   <div class="base"></div>
@@ -998,8 +998,9 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
   const joy = document.getElementById('joystick');
   const stick = document.getElementById('stick');
   let active = false, pid = null, cx=0, cy=0;
-  const R = 36; // smaller radius -> easier thumb reach
-  const dead = 0.12;
+  const R = 48; // larger radius -> wider lever range
+ const dead = 0.08; // smaller deadzone -> higher sensitivity
+ const SENS = 1.35; // axis gain
   const setStick = (dx,dy)=>{ if(!stick) return; stick.style.transform = `translate(${dx - 24}px, ${dy - 24}px)`; };
   const reset = ()=>{ input.ax = 0; input.ay = 0; active=false; pid=null; setStick(0,0); };
   const center = ()=>{ if(!joy) return; const r=joy.getBoundingClientRect(); cx=r.left+r.width/2; cy=r.top+r.height/2; };
@@ -1014,8 +1015,8 @@ const input = {up:0,down:0,left:0,right:0,shot:0,alt:0,bomb:0,focus:0,ax:0,ay:0}
     let nx=dx/R, ny=dy/R;
     if(Math.abs(nx)<dead) nx=0;
     if(Math.abs(ny)<dead) ny=0;
-    input.ax = nx;
-    input.ay = ny;
+    input.ax = clamp(nx * SENS, -1, 1);
+ input.ay = clamp(ny * SENS, -1, 1);
     setStick(dx,dy);
   };
   const up = (e)=>{ if(e.pointerId!==pid) return; e.preventDefault(); reset(); };
@@ -1251,7 +1252,7 @@ loop();
 <!-- Mobile Buttons: SHOT+LASER / FOCUS / BOMB -->
 <div id="mobileUI" aria-hidden="true">
   <div id="btnFire" class="btn">FIRE</div>
-  <div id="btnFocus" class="btn small">FOCUS</div>
+  <div id="btnFocus" class="btn small">FOCUS+FIRE</div>
   <div id="btnBomb" class="btn small">BOMB</div>
 </div>
 </body>
