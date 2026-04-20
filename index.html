@@ -330,7 +330,8 @@ function _primeAudio(){
     src.stop(0.01);
   }catch(_e){}
 }
-) : Promise.resolve();
+function unlockAudio(){
+  const p = (audioCtx.state === 'suspended') ? audioCtx.resume().catch(()=>{}) : Promise.resolve();
   p.then(()=>{
     audioUnlocked = (audioCtx.state === 'running');
     if(audioUnlocked) _primeAudio();
@@ -341,6 +342,7 @@ function _primeAudio(){
     }
   });
 }
+
 audioCtx.onstatechange = ()=>{
   if(audioCtx.state === 'running'){
     audioUnlocked = true;
@@ -354,7 +356,7 @@ audioCtx.onstatechange = ()=>{
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState === 'visible') resumeAudio();
 });
-function resumeAudio(){ if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{}); }
+function resumeAudio(){ unlockAudio(); }
 cvs.addEventListener('pointerdown', resumeAudio);
 document.addEventListener('keydown', resumeAudio, {once:true});
 function beep(type, f1, f2, t, g){
@@ -797,8 +799,6 @@ function pushEnemyBullets(batch){
  let room = Math.max(0, maxEnemyBullets() - enemyBullets.length);
  if(room <= 0) return;
  // ★ boss scaling
- const bossActive = (boss && !boss.entering);
- const stg = bossActive ? (boss.stage || stage) : stage;
  const hpRatio = bossActive ? Math.max(0, Math.min(1, boss.hp / boss.maxHP)) : 1;
  const phase = bossActive ? (boss.phase || 1) : 1;
  const speedMul = bossActive ? (1 + (1 - hpRatio) * 0.22 + (phase-1) * 0.05) : 1;
