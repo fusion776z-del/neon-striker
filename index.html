@@ -316,6 +316,44 @@ const BULLET_SOFTCAP = 120; // SE2: earlier softcap
 cvs.focus();
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+// === iOS/Safari audio unlock (BGMがiPhoneで鳴らない対策) ===
+let audioUnlocked = false;
+let pendingBGM = null;
+function _primeAudio(){
+  try{
+    // 1-sample silent buffer to fully unlock output path on iOS
+    const buf = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioCtx.destination);
+    src.start(0);
+    src.stop(0.01);
+  }catch(_e){}
+}
+) : Promise.resolve();
+  p.then(()=>{
+    audioUnlocked = (audioCtx.state === 'running');
+    if(audioUnlocked) _primeAudio();
+    if(audioUnlocked && pendingBGM){
+      const {stage,isBoss} = pendingBGM;
+      pendingBGM = null;
+      startBGM(stage,isBoss);
+    }
+  });
+}
+audioCtx.onstatechange = ()=>{
+  if(audioCtx.state === 'running'){
+    audioUnlocked = true;
+    if(pendingBGM){
+      const {stage,isBoss} = pendingBGM;
+      pendingBGM = null;
+      startBGM(stage,isBoss);
+    }
+  }
+};
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible') resumeAudio();
+});
 function resumeAudio(){ if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{}); }
 cvs.addEventListener('pointerdown', resumeAudio);
 document.addEventListener('keydown', resumeAudio, {once:true});
@@ -689,8 +727,13 @@ function playBar(barIndex, when, step, stage, isBoss){
 }
 
 function startBGM(stage, isBoss){
- if(SE2_MODE) return;
+ // iPhoneでもBGMを鳴らす：SE2_MODEでもreturnしない
  stopBGM();
+ // iOS/Safariはユーザー操作前だと再生できないので、解除前は保留
+ if(!audioUnlocked || audioCtx.state !== 'running'){
+  pendingBGM = {stage: stage || 1, isBoss: !!isBoss};
+  return;
+ }
  if(audioCtx.state !== 'running') return;
  bgmStage = stage || 1;
  bgmBoss = !!isBoss;
@@ -710,7 +753,6 @@ function startBGM(stage, isBoss){
   }
  }, 25);
 }
-
 const rand = (a,b)=>Math.random()*(b-a)+a;
 const clamp = (v,min,max)=>Math.max(min, Math.min(max, v));
 const hit = (a,b,aw,ah,bw,bh)=>a.x < b.x + bw && a.x + aw > b.x && a.y < b.y + bh && a.y + ah > b.y;
@@ -755,7 +797,8 @@ function pushEnemyBullets(batch){
  let room = Math.max(0, maxEnemyBullets() - enemyBullets.length);
  if(room <= 0) return;
  // ★ boss scaling
-
+ const bossActive = (boss && !boss.entering);
+ const stg = bossActive ? (boss.stage || stage) : stage;
  const hpRatio = bossActive ? Math.max(0, Math.min(1, boss.hp / boss.maxHP)) : 1;
  const phase = bossActive ? (boss.phase || 1) : 1;
  const speedMul = bossActive ? (1 + (1 - hpRatio) * 0.22 + (phase-1) * 0.05) : 1;
