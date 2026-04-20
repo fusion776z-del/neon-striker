@@ -41,12 +41,6 @@ body{touch-action:none; overscroll-behavior:none;}
 .rotate-hint .ttl{font-size:17px; font-weight:800; letter-spacing:.08em; color:#ffd84d; margin-bottom:8px;}
 .rotate-hint .msg{font-size:13px; line-height:1.6; color:rgba(255,255,255,.86);} 
 .rotate-hint .mini{margin-top:10px; font-size:12px; color:rgba(222,242,255,.72);} 
-
-/* Hint */
-.hint-touch{position:absolute; left:10px; top:10px; padding:6px 10px; border-radius:999px;
- background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.10);
- font-size:11px; color:rgba(222,242,255,.75); z-index:30;}
-
 /* === Virtual Joystick (smaller + higher) === */
 #joystick{position:fixed; left:12px; bottom:110px; width:104px; height:104px; border-radius:999px;
  background:rgba(114,247,255,.10); border:1px solid rgba(114,247,255,.28); backdrop-filter:blur(6px);
@@ -188,10 +182,6 @@ body{touch-action:none; overscroll-behavior:none;}
 .tbtn.gold{ border-color: rgba(255,216,77,.18) !important; }
 .tbtn.green{ border-color: rgba(137,255,155,.18) !important; }
 .tbtn:active, .tbtn.active{ background: rgba(114,247,255,.14) !important; }
-
-.hint-touch{ background: rgba(0,0,0,.18) !important; border-color: rgba(255,255,255,.08) !important; }
-
-
 /* === Joystick: push further outside bottom-left + transparent while touching === */
 :root{
   --joyIdleOpacity: .32;   /* 触っていない時 */
@@ -287,23 +277,40 @@ const HOMING_UNLOCK_POWER = 5;
 const FOCUS_MOVE_SCALE = 0.62;
 const BULLET_HELL_MULT = 1.00; // SE2: reduce density
 const MOB_BULLET_DIV = 8; // mobs bullet density: 1/8 (boss unchanged)
-const BOSS_BARRAGE_MULT = 1.15; // SE2: reduce boss density // ★ denser boss barrages (further scaled by HP/phase) // denser boss barrages, but auto-throttled to avoid slowdowns
+const BOSS_BARRAGE_MULT = SE2_MODE ? 0.90 : 1.15; // SE2: reduce boss density // ★ denser boss barrages (further scaled by HP/phase) // denser boss barrages, but auto-throttled to avoid slowdowns
 function bossCount(n){
  // Adaptive density: keep patterns thick, but throttle when bullet load is high.
  const load = getBulletLoadScale(); // 0.58..1
+
+ // ★ FIX: always define bossActive/stg inside this function (avoid ReferenceError)
+ const bossActive = (boss && !boss.entering);
+ const stg = bossActive ? (boss.stage || stage) : stage;
+
+ // ★ FIX: stageScale was referenced but never defined in this build.
+ // Keep it at 1.0 (neutral) to prevent crashes.
+ const stageScale = 1.0;
+
  const bossLoad = Math.min(1, Math.max(0.55, load + 0.10));
  // ★ HP/phase scaling (only meaningful during boss fights)
- const hpRatio = (boss && !boss.entering) ? Math.max(0, Math.min(1, boss.hp / boss.maxHP)) : 1;
- const hpScale = 1 + (1 - hpRatio) * 0.75;                 // up to x1.75 at 0 HP
- const phaseScale = (boss && !boss.entering) ? (boss.phase===4 ? 1.55 : (boss.phase===3 ? 1.30 : (boss.phase===2 ? 1.12 : 1.0))) : 1.0;
- const target = Math.max(1, Math.round(n * BOSS_BARRAGE_MULT * bossLoad * hpScale * phaseScale));
+ const hpRatio = bossActive ? Math.max(0, Math.min(1, boss.hp / boss.maxHP)) : 1;
+ const hpScale = 1 + (1 - hpRatio) * 0.75; // up to x1.75 at 0 HP
+ const phaseScale = bossActive ? (boss.phase===4 ? 1.55 : (boss.phase===3 ? 1.30 : (boss.phase===2 ? 1.12 : 1.0))) : 1.0;
+
+ const target = Math.max(1, Math.round(n * BOSS_BARRAGE_MULT * bossLoad * hpScale * phaseScale * stageScale));
+
  // Per-volley budget based on remaining room (prevents spikes).
- const room = Math.max(0, MAX_ENEMY_BULLETS - (enemyBullets ? enemyBullets.length : 0));
- const cap = Math.max(1, Math.floor(room * (SE2_MODE ? 0.08 : (IS_MOBILE ? 0.10 : 0.12)))); // SE2: tighter per-volley budget
+ const room = Math.max(0, maxEnemyBullets() - (enemyBullets ? enemyBullets.length : 0));
+ const capFrac = SE2_MODE ? (stg >= 3 ? 0.05 : 0.08) : (IS_MOBILE ? 0.10 : 0.12);
+ const cap = Math.max(1, Math.floor(room * capFrac)); // per-volley budget
  return Math.min(target, cap);
 }
 const EXTRA_LIFE_CAPSULES = 10;
 const MAX_ENEMY_BULLETS = 180; // SE2: reduce bullet cap
+function maxEnemyBullets(){
+  // iPhone SE2: tighter cap for boss fights from Stage 3+ to avoid slowdowns
+  if(SE2_MODE && boss && !boss.entering && (boss.stage || stage) >= 3) return 140;
+  return MAX_ENEMY_BULLETS;
+}
 const MAX_PARTICLES = 120; // SE2: reduce particles
 const BULLET_SOFTCAP = 120; // SE2: earlier softcap
 cvs.focus();
@@ -738,13 +745,17 @@ function drawStars(arr,color,blur=0){ ctx.save(); ctx.fillStyle = color; ctx.sha
 function getBulletLoadScale(){ const n = enemyBullets ? enemyBullets.length : 0; return n > 280 ? 0.58 : n > 220 ? 0.72 : n > 160 ? 0.86 : 1; }
 function pushEnemyBullets(batch){
  if(!batch || !batch.length) return;
+ // ★ FIX: define bossActive/stg before using them (avoid TDZ ReferenceError)
+ const bossActive = (boss && !boss.entering);
+ const stg = bossActive ? (boss.stage || stage) : stage;
  const load = getBulletLoadScale();
  const skipStepBase = load < 0.78 ? 2 : (load < 0.90 ? 1 : 0);
- const skipStep = SE2_MODE ? Math.max(2, skipStepBase+1) : (IS_MOBILE ? Math.max(1, skipStepBase) : skipStepBase);
- let room = Math.max(0, MAX_ENEMY_BULLETS - enemyBullets.length);
+ let skipStep = SE2_MODE ? Math.max(2, skipStepBase+1) : (IS_MOBILE ? Math.max(1, skipStepBase) : skipStepBase);
+ if(SE2_MODE && bossActive && stg >= 3) skipStep = Math.max(3, skipStep);
+ let room = Math.max(0, maxEnemyBullets() - enemyBullets.length);
  if(room <= 0) return;
  // ★ boss scaling
- const bossActive = (boss && !boss.entering);
+
  const hpRatio = bossActive ? Math.max(0, Math.min(1, boss.hp / boss.maxHP)) : 1;
  const phase = bossActive ? (boss.phase || 1) : 1;
  const speedMul = bossActive ? (1 + (1 - hpRatio) * 0.22 + (phase-1) * 0.05) : 1;
@@ -1302,15 +1313,20 @@ function updatePlay(){
   const phase = boss.phase || 1;
   const px0 = player.x + player.w/2, py0 = player.y + player.h/2;
   // ★ extra pattern layer (adds variety as phases advance)
-  if(!boss.entering){
-    const extra=[];
-    if(phase>=2) extra.push(...bossExtraSpiral(cx, cy, phase, load, boss.t*0.03, '#ff8af2'));
-    if(phase>=3) extra.push(...bossExtraMines(cx, cy, phase, load));
-    if(phase>=4) extra.push(...bossExtraBouncers(cx, cy, phase, load));
-    extra.push(...bossExtraAimedBurst(cx, cy, px0, py0, phase, load));
-    pushEnemyBullets(extra);
+ if(!boss.entering){
+  const stg2 = (boss.stage || stage);
+  const extraLoad = load * ((SE2_MODE && stg2 >= 3) ? 0.55 : (IS_MOBILE && stg2 >= 3 ? 0.80 : 1.0));
+  const doExtras = !(SE2_MODE && stg2 >= 3);
+  const extra=[];
+  if(doExtras){
+   if(phase>=2) extra.push(...bossExtraSpiral(cx, cy, phase, extraLoad, boss.t*0.03, '#ff8af2'));
+   if(phase>=3) extra.push(...bossExtraMines(cx, cy, phase, extraLoad));
+   if(phase>=4) extra.push(...bossExtraBouncers(cx, cy, phase, extraLoad));
   }
-  // (existing stage-specific patterns follow)
+  extra.push(...bossExtraAimedBurst(cx, cy, px0, py0, phase, extraLoad));
+  pushEnemyBullets(extra);
+ }
+ // (existing stage-specific patterns follow)
 if(st===7){ const load = getBulletLoadScale(); const px=player.x+player.w/2, py=player.y+player.h/2; if(boss.phase===1){ const batch=[]; const lanes=bossCount(22); const gapCenter = 5 + Math.floor((Math.sin(boss.t*.05)+1)*4); const mirrorGap = lanes - 1 - gapCenter; for(let i=0;i<lanes;i++){ if(Math.abs(i-gapCenter)<=1 || Math.abs(i-mirrorGap)<=1) continue; const yOff=(i-(lanes-1)/2)*13; batch.push({x:cx,y:cy+yOff,vx:-4.2,vy:Math.sin((boss.t+i)*.18)*.9 + yOff*.018,w:9,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[i % BOSS_BULLET_PALETTE.length]}); batch.push({x:cx+18,y:cy+yOff,vx:-3.8,vy:-Math.sin((boss.t+i)*.18)*.8 - yOff*.016,w:9,h:5,enemy:true,boss:true,color:BOSS_BULLET_PALETTE[(i+2) % BOSS_BULLET_PALETTE.length]}); } const aim=aimVelocity(cx,cy,px,py,4.8); for(let k=-Math.floor(bossCount(3)/2);k<=Math.floor(bossCount(3)/2);k++){ const a=Math.atan2(aim.vy,aim.vx)+k*.16; batch.push({x:cx,y:cy,vx:Math.cos(a)*4.8,vy:Math.sin(a)*4.8,w:10,h:5,enemy:true,boss:true,color:'#ffd84d'}); } 
             // Extra microFan (denser, tighter)
             const aim2 = aimVelocity(cx,cy,px,py,5.4);
