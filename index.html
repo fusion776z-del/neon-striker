@@ -1269,21 +1269,26 @@ function drawBullet(b){ ctx.save(); const heavyBulletLoad = (IS_MOBILE && b.enem
 function drawLaser(l){ ctx.save(); const a=l.life/l.maxLife; ctx.globalAlpha=.65*a; ctx.strokeStyle=l.color; ctx.lineWidth=l.w; ctx.shadowBlur = (IS_MOBILE ? 0 : 26); ctx.shadowColor=l.color; ctx.beginPath(); ctx.moveTo(l.x1,l.y1); ctx.lineTo(l.x2,l.y2); ctx.stroke(); ctx.restore(); }
 function drawPower(p){ const core = p.color || '#89ff9b'; const edge = p.stroke || '#e7ffb3'; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(time*.08); ctx.shadowBlur = (IS_MOBILE ? 0 : 18); ctx.shadowColor=core; ctx.strokeStyle=edge; ctx.lineWidth=3; ctx.beginPath(); for(let i=0;i<4;i++){ const a=i*Math.PI/2; const x=Math.cos(a)*8,y=Math.sin(a)*8; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);} ctx.closePath(); ctx.stroke(); ctx.globalAlpha=.92; ctx.fillStyle=core; ctx.fillRect(-2,-2,4,4); ctx.restore(); } function drawTerrains(){ for(const t of terrains){ ctx.save(); ctx.fillStyle = t.color; ctx.strokeStyle = t.stroke; ctx.lineWidth = 2; ctx.shadowBlur = 16; ctx.shadowColor = t.stroke; roundRect(t.x,t.y,t.w,t.h,10,true,true); ctx.fillStyle = 'rgba(255,255,255,.10)'; roundRect(t.x+2,t.y+2,Math.max(0,t.w-4),Math.min(6, Math.max(0,t.h-4)),8,true,false); ctx.restore(); } }
 function drawHUD(){
- // ★ HUDは固定。ほぼ見えないレベルまで文字を透明化（近接時は更に消える）
+ // ★ HUD: 自機が近づいたら透明化（既存） + 自機が画面中央より下なら白く濃く表示
  const hudX = 14, hudY = 14, hudW = 308, hudH = 82;
- let bgA = 0.10;   // 通常時背景（かなり薄い）
- let txA = 0.42;   // 通常時文字（かなり薄い）
+ const nearBg = 0.01, nearTx = 0.12;
+ let bgA = 0.10;
+ let txA = 0.42;
+ let farBg = bgA;
+ let farTx = txA;
  if(state==='play' && player){
   const px = player.x + player.w*0.5;
   const py = player.y + player.h*0.5;
+  // 画面中央より下（yが大きい）なら、離れている時はHUDを濃く
+  if(py > H*0.5){ farBg = 0.18; farTx = 0.78; }
   const nx = Math.max(hudX, Math.min(px, hudX + hudW));
   const ny = Math.max(hudY, Math.min(py, hudY + hudH));
   const d = Math.hypot(px - nx, py - ny);
-  const near = 90;    // 近づいたらすぐ消える
-  const far  = 240;   // 離れた時のみわずかに見える
+  const near = 90;
+  const far  = 240;
   const t = Math.max(0, Math.min(1, (d - near) / (far - near)));
-  bgA = 0.01 + (0.10-0.01)*t;   // 重なるとほぼ消滅
-  txA = 0.12 + (0.42-0.12)*t;   // 文字はほぼ見えない
+  bgA = nearBg + (farBg - nearBg) * t;
+  txA = nearTx + (farTx - nearTx) * t;
  }
  ctx.save();
  ctx.fillStyle = `rgba(10,18,40,${bgA.toFixed(3)})`;
