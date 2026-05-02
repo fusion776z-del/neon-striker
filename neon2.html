@@ -27,11 +27,44 @@
   100%{background-position:100% 50%}
 }
 
-</style></head><body><div class="frame"><div class="diag" id="diag"></div>
+
+
+/* === Back to index button (added) === */
+#backIndexBtn{
+  position:fixed;
+  left:calc(12px + env(safe-area-inset-left));
+  top:calc(12px + env(safe-area-inset-top));
+  z-index:200;
+  width:150px;
+  height:54px;
+  border-radius:18px;
+  display:none; /* shown only on title */
+  place-items:center;
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:.10em;
+}
+@media (min-width:430px){
+  #backIndexBtn{ width:190px; height:66px; font-size:15px; border-radius:20px; }
+}
+
+</style></head><body>
+<div id="backIndexBtn" class="tbtn" aria-label="indexへ戻る">indexへ戻る</div>
+<div class="frame"><div class="diag" id="diag"></div>
 <div id="telop" class="telop" aria-hidden="true">
-  <div class="track" id="telopTrack">リップルはパワーアップカプセルの吸収用　・　ショットはボスの部位破壊用　・　ボスが虹色の弾を出し始めたらレーザーだ！</div>
+  <div class="track" id="telopTrack">リップルはパワーアップカプセルを吸収する　・　ショットはボスの部位を破壊する　・　ボスが虹色の弾を出し始めたらレーザーだ！</div>
 </div>
 <canvas id="game" width="360" height="640" tabindex="0"></canvas></div><div id="pauseBtn" class="tbtn small warn pauseAboveJoy" data-tap="pause" aria-label="pause">PAUSE</div><div id="joystick" aria-label="move joystick"><div class="label">MOVE</div><div class="base"></div><div class="stick" id="stick"></div></div><div class="actions" aria-hidden="true"><div class="tbtn big gold" id="bombBtn" data-tap="bomb" aria-label="bomb">BOMB</div><div class="tbtn big" id="typeBtn" data-tap="type" aria-label="shot type">TYPE:N</div><div class="tbtn big green" id="focusBtn" data-hold="focus" aria-label="focus">FOCUS</div></div><div class="caption"><span class="pill">MOVE ←↑↓→ / SHOT Z / LASER X / BOMB C / FOCUS Shift / PAUSE Space / START Z / BGM: STAGE x7 OVERDRIVE (SUBBASS HEAVY)</span></div></div><script>"use strict";
+
+// === Back-to-index button wiring (added) ===
+const __backBtn = document.getElementById('backIndexBtn');
+if(__backBtn){
+  __backBtn.addEventListener('pointerdown', (e)=>{
+    e.preventDefault();
+    location.href = 'index.html';
+  }, {passive:false});
+}
+
 const cvs = document.getElementById('game');
 const ctx = cvs.getContext('2d', { alpha: false, desynchronized: true });
 ctx.imageSmoothingEnabled = false;
@@ -2372,7 +2405,8 @@ ctx.restore();
 if(!IS_MOBILE && !lowQuality) drawScanline();
 ctx.restore();
 }
-function loop(now){ try{ _updatePerf(now || performance.now()); time++; if(state==='title') updateTitle(); else if(state==='ending') updateEnding(); else if(state==='error') updateError(); else { if(!paused) updatePlay(); } hiScore = Math.max(hiScore, score); render(); } catch(err){ console.error(err); errorMessage = String(err && err.message ? err.message : err); state = 'error'; input.shot = 0; input.alt = 0; render(); } requestAnimationFrame(loop); }
+function loop(now){ try{
+    if(__backBtn){ __backBtn.style.display = (state==="title") ? "grid" : "none"; } _updatePerf(now || performance.now()); time++; if(state==='title') updateTitle(); else if(state==='ending') updateEnding(); else if(state==='error') updateError(); else { if(!paused) updatePlay(); } hiScore = Math.max(hiScore, score); render(); } catch(err){ console.error(err); errorMessage = String(err && err.message ? err.message : err); state = 'error'; input.shot = 0; input.alt = 0; render(); } requestAnimationFrame(loop); }
 addEventListener('keydown', e=>{ if(e.key==='ArrowUp') input.up=1; if(e.key==='ArrowDown') input.down=1; if(e.key==='ArrowLeft') input.left=1; if(e.key==='ArrowRight') input.right=1; if(e.key==='Shift') input.focus=1; if(e.key==='z' || e.key==='Z') input.shot=1; if(e.key==='x' || e.key==='X') input.alt=1; if(e.key==='c' || e.key==='C') input.bomb=1;
 if(e.key==='v' || e.key==='V'){ toggleShotType(); }
 if(e.code==='Space'){ e.preventDefault(); if(state==='play' && clearTimer<=0){ paused = !paused; } }

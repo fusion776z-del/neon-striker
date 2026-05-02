@@ -217,9 +217,32 @@ body{touch-action:none; overscroll-behavior:none;}
   opacity: var(--btnTouchOpacity) !important;
 }
 
+
+
+/* === Back to index button (added) === */
+#backIndexBtn{
+  position:fixed;
+  left:calc(12px + env(safe-area-inset-left));
+  top:calc(12px + env(safe-area-inset-top));
+  z-index:120;
+  width:150px;
+  height:54px;
+  border-radius:18px;
+  display:none; /* shown only on title */
+  place-items:center;
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:.10em;
+}
+@media (min-width:430px){
+  #backIndexBtn{ width:190px; height:66px; font-size:15px; border-radius:20px; }
+}
+
 </style>
 </head>
 <body>
+<div id="backIndexBtn" class="tbtn" aria-label="indexへ戻る">indexへ戻る</div>
+
 <div class="frame">
 <div class="diag" id="diag"></div>
  <div class="rotate-hint" id="rotateHint" aria-live="polite">
@@ -251,6 +274,17 @@ body{touch-action:none; overscroll-behavior:none;}
 </div>
 <script>
 "use strict";
+
+// === Back-to-index button wiring (added) ===
+const __backBtn = document.getElementById('backIndexBtn');
+if(__backBtn){
+  __backBtn.addEventListener('pointerdown', (e)=>{
+    e.preventDefault();
+    // go back to index page
+    location.href = 'index.html';
+  }, {passive:false});
+}
+
 const cvs = document.getElementById('game');
 const ctx = cvs.getContext('2d', { alpha: false, desynchronized: true });
 ctx.imageSmoothingEnabled = false;
@@ -1441,7 +1475,11 @@ function render(){ ctx.save(); const sx=0, sy=0; ctx.translate(sx,sy); drawBackg
     drawHUD();
  if(paused){ ctx.save(); ctx.globalAlpha=.72; ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fillRect(0,0,W,H); glowText('PAUSE',W/2,H/2,64,'center','#ffd84d'); ctx.restore(); }
   } if(!IS_MOBILE && !lowQuality) drawScanline(); ctx.restore(); }
-function loop(now){ try{ _updatePerf(now || performance.now()); time++; if(state==='title') updateTitle(); else if(state==='ending') updateEnding(); else if(state==='error') updateError(); else { if(!paused) updatePlay(); } hiScore = Math.max(hiScore, score); render(); } catch(err){ console.error(err); errorMessage = String(err && err.message ? err.message : err); state = 'error'; render(); } requestAnimationFrame(loop); }
+function loop(now){
+  try{
+    // show back button only on title
+    if(__backBtn){ __backBtn.style.display = (state==="title") ? "grid" : "none"; }
+ _updatePerf(now || performance.now()); time++; if(state==='title') updateTitle(); else if(state==='ending') updateEnding(); else if(state==='error') updateError(); else { if(!paused) updatePlay(); } hiScore = Math.max(hiScore, score); render(); } catch(err){ console.error(err); errorMessage = String(err && err.message ? err.message : err); state = 'error'; render(); } requestAnimationFrame(loop); }
 addEventListener('keydown', e=>{ if(e.key==='ArrowUp') input.up=1; if(e.key==='ArrowDown') input.down=1; if(e.key==='ArrowLeft') input.left=1; if(e.key==='ArrowRight') input.right=1; if(e.key==='Shift') input.focus=1; if(e.key==='z' || e.key==='Z') input.shot=1; if(e.key==='x' || e.key==='X') input.alt=1; if(e.key==='c' || e.key==='C') input.bomb=1; 
  if(e.code==='Space'){ e.preventDefault(); if(state==='play' && clearTimer<=0){ paused = !paused; } }
 });
