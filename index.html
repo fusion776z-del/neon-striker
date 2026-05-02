@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>NEONSTRIKER2</title>
+<title>NEONSTRIKER</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
@@ -93,6 +93,11 @@
   .entrytab{ width:180px; height:72px; border-radius:22px; font-size:15px; }
 }
 
+
+.entrycol{display:flex; flex-direction:column; align-items:center; gap:6px;}
+.entryhint{font-size:12px; letter-spacing:.06em; color:rgba(222,242,255,.72); line-height:1.2; text-shadow:0 0 12px rgba(0,0,0,.45); user-select:none; -webkit-user-select:none;}
+@media (max-width:380px){ .entryhint{font-size:11px;} }
+
 </style>
 </head>
 <body>
@@ -109,9 +114,15 @@
 
   <!-- Entry tabs (centered on title) -->
   <div class="entrybar entrybarOnTitle" aria-label="入口">
+  <div class="entrycol">
     <button class="entrytab" type="button" data-entry="1">1へ</button>
-    <button class="entrytab" type="button" data-entry="2">2へ</button>
+    <div class="entryhint">※横画面専用</div>
   </div>
+  <div class="entrycol">
+    <button class="entrytab" type="button" data-entry="2">2へ</button>
+    <div class="entryhint">※縦画面のままでOK</div>
+  </div>
+</div>
 
 </div>
 
@@ -358,7 +369,7 @@ function drawScanline(){
 
 function drawTitle(){
   const cx = VW/2;
-  glowText('NEONSTRIKER2', cx, 150, 46, 'center', '#72f7ff');
+  glowText('NEONSTRIKER', cx, 150, 46, 'center', '#72f7ff');
   glowText('NEON RAINBOW BOSS BULLETS', cx, 205, 20, 'center', '#ff5db1');
   ctx.save();
   ctx.textAlign='center';
@@ -367,8 +378,7 @@ function drawTitle(){
   // ctx.fillText('TAP / Z TO START', cx, 300); // removed
   ctx.fillStyle='rgba(222,242,255,.70)';
   ctx.font='600 12px sans-serif';
-  ctx.fillText('MOVE: JOYSTICK / ARROWS • BOMB: C / BUTTON • FOCUS: SHIFT / HOLD', cx, 392);
-  ctx.restore();
+   ctx.restore();
 }
 
 function render(){
