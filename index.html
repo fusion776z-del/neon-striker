@@ -94,9 +94,30 @@
 }
 
 
-.entrycol{display:flex; flex-direction:column; align-items:center; gap:6px;}
+.entrycol{display:flex; flex-direction:column; align-items:center; gap:8px;}
 .entryhint{font-size:12px; letter-spacing:.06em; color:rgba(222,242,255,.72); line-height:1.2; text-shadow:0 0 12px rgba(0,0,0,.45); user-select:none; -webkit-user-select:none;}
 @media (max-width:380px){ .entryhint{font-size:11px;} }
+
+
+/* === ENTRY HINT emphasis (updated) === */
+.entryhint{
+  font-size:14px;
+  font-weight:900;
+  letter-spacing:.08em;
+  color:#ffd84d;
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(255,216,77,.40);
+  padding:6px 10px;
+  border-radius:999px;
+  box-shadow:0 0 18px rgba(255,216,77,.22), 0 10px 26px rgba(0,0,0,.35);
+  text-shadow:0 0 18px rgba(0,0,0,.65);
+}
+@media (max-width:380px){ .entryhint{ font-size:13px; } }
+
+
+/* === Adjust: lower only the 2nd (2へ) block === */
+.entrycol2{ margin-top: 20px; }
+@media (min-width:430px){ .entrycol2{ margin-top: 24px; } }
 
 </style>
 </head>
@@ -118,16 +139,12 @@
     <button class="entrytab" type="button" data-entry="1">1へ</button>
     <div class="entryhint">※横画面専用</div>
   </div>
-  <div class="entrycol">
-    <button class="entrytab" type="button" data-entry="2">2へ</button>
+  <div class="entrycol entrycol2">
+ <button class="entrytab" type="button" data-entry="2">2へ</button>
     <div class="entryhint">※縦画面のままでOK</div>
   </div>
 </div>
 
-</div>
-
-<div class="caption">
-  <span class="pill">MOVE ←↑↓→ / SHOT Z / LASER X / BOMB C / FOCUS Shift / PAUSE Space / START Z / BGM: STAGE x7 OVERDRIVE (SUBBASS HEAVY)</span>
 </div>
 
 <script>
